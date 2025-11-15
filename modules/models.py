@@ -531,6 +531,7 @@ class ResumeOptimizationResult:
     optimization_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     style_used: str = "balanced"  # "conservative", "balanced", "aggressive"
     authenticity_report: Optional[Dict[str, Any]] = None  # LLM-based authenticity report
+    metrics: Optional[Dict[str, Any]] = None  # Quantitative quality metrics
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -541,7 +542,8 @@ class ResumeOptimizationResult:
             'summary_of_improvements': self.summary_of_improvements,
             'optimization_timestamp': self.optimization_timestamp,
             'style_used': self.style_used,
-            'authenticity_report': self.authenticity_report
+            'authenticity_report': self.authenticity_report,
+            'metrics': self.metrics
         }
     
     def to_json(self) -> str:
@@ -560,7 +562,8 @@ class ResumeOptimizationResult:
             summary_of_improvements=data.get('summary_of_improvements', []),
             optimization_timestamp=data.get('optimization_timestamp', datetime.now().isoformat()),
             style_used=data.get('style_used', 'balanced'),
-            authenticity_report=data.get('authenticity_report')
+            authenticity_report=data.get('authenticity_report'),
+            metrics=data.get('metrics')
         )
     
     def get_change_count_by_type(self) -> Dict[str, int]:

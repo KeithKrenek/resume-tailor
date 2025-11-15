@@ -4,6 +4,7 @@ from typing import Tuple, Optional
 from modules.models import JobModel, ResumeModel, GapAnalysis, ResumeOptimizationResult
 from agents.resume_optimization_agent import optimize_resume
 from agents.authenticity_agent import create_authenticity_agent
+from services.metrics_service import MetricsService
 from utils.logging_config import get_logger
 
 # Setup logging
@@ -16,7 +17,8 @@ def run_optimization(
     gap: GapAnalysis,
     style: str = "balanced",
     api_key: Optional[str] = None,
-    enable_authenticity_check: bool = True
+    enable_authenticity_check: bool = True,
+    enable_metrics: bool = True
 ) -> ResumeOptimizationResult:
     """
     Run resume optimization without Streamlit dependencies.
@@ -30,6 +32,7 @@ def run_optimization(
         style: Optimization style ('conservative', 'balanced', 'aggressive')
         api_key: Anthropic API key (optional)
         enable_authenticity_check: Whether to run LLM-based authenticity verification
+        enable_metrics: Whether to calculate quality metrics
 
     Returns:
         ResumeOptimizationResult with optimized resume and changes
@@ -94,6 +97,37 @@ def run_optimization(
             # Don't fail the whole optimization, just log the error
             # The result will not have an authenticity_report field
             logger.warning("Continuing without authenticity report")
+
+    # Calculate quality metrics if enabled
+    if enable_metrics:
+        logger.info("Calculating quality metrics")
+        try:
+            # Create metrics service
+            metrics_service = MetricsService()
+
+            # Get text representations
+            original_text = resume.raw_text or resume.to_markdown()
+            optimized_text = result.optimized_resume.raw_text or result.optimized_resume.to_markdown()
+            job_text = job.raw_text or job.description or ""
+
+            # Calculate metrics
+            metrics_result = metrics_service.calculate_all_metrics(
+                original_resume=original_text,
+                optimized_resume=optimized_text,
+                job_description=job_text
+            )
+
+            # Attach metrics to result
+            result.metrics = metrics_result.to_dict()
+            logger.info(
+                f"Metrics calculated: Overall score {metrics_result.overall_score:.2%}, "
+                f"Passed: {metrics_result.overall_passed}"
+            )
+
+        except Exception as e:
+            logger.error(f"Metrics calculation failed: {e}", exc_info=True)
+            # Don't fail the whole optimization, just log the error
+            logger.warning("Continuing without metrics")
 
     return result
 
