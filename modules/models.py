@@ -212,15 +212,9 @@ class ResumeModel:
                     header += f" • {edu.institution}"
                 parts.append(header)
 
-                date_parts = []
-                if edu.start_date or edu.end_date:
-                    date_str = f"{edu.start_date or 'N/A'} – {edu.end_date or 'N/A'}"
-                    date_parts.append(date_str)
-                if edu.location:
-                    date_parts.append(edu.location)
-
-                if date_parts:
-                    parts.append(f"*{' | '.join(date_parts)}*")
+                # Education uses graduation_date, not start_date/end_date
+                if edu.graduation_date:
+                    parts.append(f"*Graduated: {edu.graduation_date}*")
                 if edu.gpa:
                     parts.append(f"GPA: {edu.gpa}")
 
