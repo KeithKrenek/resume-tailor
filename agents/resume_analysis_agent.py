@@ -168,19 +168,8 @@ Be thorough and accurate. Extract all skills mentioned or implied in experience 
 
     def _parse_json_response(self, response_text: str) -> Optional[dict]:
         """Parse JSON from response text."""
-        try:
-            # Try to find JSON in the response
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-
-            if start_idx == -1 or end_idx == 0:
-                return None
-
-            json_text = response_text[start_idx:end_idx]
-            return json.loads(json_text)
-
-        except json.JSONDecodeError:
-            return None
+        from utils.json_utils import extract_json_object
+        return extract_json_object(response_text)
 
     def _create_resume_model(
         self,

@@ -1,7 +1,7 @@
 """Data models for Resume Tailor application."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 from enum import Enum
 import json
@@ -114,6 +114,146 @@ class ResumeModel:
     def to_json(self) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict(), indent=2)
+
+    def to_markdown(self) -> str:
+        """
+        Convert resume to markdown format.
+
+        Returns:
+            Formatted markdown representation of the resume
+        """
+        parts = []
+
+        # Header with name
+        if self.name:
+            parts.append(f"# {self.name}\n")
+
+        # Contact information
+        contact_parts = []
+        if self.email:
+            contact_parts.append(f"✉️ {self.email}")
+        if self.phone:
+            contact_parts.append(f"📞 {self.phone}")
+        if self.location:
+            contact_parts.append(f"📍 {self.location}")
+
+        if contact_parts:
+            parts.append(" | ".join(contact_parts))
+            parts.append("")
+
+        # Links
+        link_parts = []
+        if self.linkedin:
+            link_parts.append(f"[LinkedIn]({self.linkedin})")
+        if self.github:
+            link_parts.append(f"[GitHub]({self.github})")
+        if self.portfolio:
+            link_parts.append(f"[Portfolio]({self.portfolio})")
+
+        if link_parts:
+            parts.append(" | ".join(link_parts))
+            parts.append("")
+
+        # Headline
+        if self.headline:
+            parts.append(f"**{self.headline}**\n")
+
+        # Summary
+        if self.summary:
+            parts.append("## Professional Summary\n")
+            parts.append(self.summary.strip())
+            parts.append("")
+
+        # Experience
+        if self.experiences:
+            parts.append("## Professional Experience\n")
+            for exp in self.experiences:
+                # Company and title
+                header = f"### {exp.title}"
+                if exp.company:
+                    header += f" • {exp.company}"
+                parts.append(header)
+
+                # Dates and location
+                date_parts = []
+                if exp.start_date or exp.end_date:
+                    date_str = f"{exp.start_date or 'N/A'} – {exp.end_date or 'Present'}"
+                    date_parts.append(date_str)
+                if exp.location:
+                    date_parts.append(exp.location)
+
+                if date_parts:
+                    parts.append(f"*{' | '.join(date_parts)}*\n")
+                else:
+                    parts.append("")
+
+                # Bullets
+                for bullet in exp.bullets:
+                    parts.append(f"- {bullet}")
+
+                # Skills for this experience
+                if exp.skills:
+                    parts.append(f"\n**Skills**: {', '.join(exp.skills)}")
+
+                parts.append("")
+
+        # Skills
+        if self.skills:
+            parts.append("## Skills\n")
+            parts.append(", ".join(self.skills))
+            parts.append("")
+
+        # Education
+        if self.education:
+            parts.append("## Education\n")
+            for edu in self.education:
+                header = f"### {edu.degree}"
+                if edu.institution:
+                    header += f" • {edu.institution}"
+                parts.append(header)
+
+                date_parts = []
+                if edu.start_date or edu.end_date:
+                    date_str = f"{edu.start_date or 'N/A'} – {edu.end_date or 'N/A'}"
+                    date_parts.append(date_str)
+                if edu.location:
+                    date_parts.append(edu.location)
+
+                if date_parts:
+                    parts.append(f"*{' | '.join(date_parts)}*")
+                if edu.gpa:
+                    parts.append(f"GPA: {edu.gpa}")
+
+                parts.append("")
+
+        # Certifications
+        if self.certifications:
+            parts.append("## Certifications\n")
+            for cert in self.certifications:
+                parts.append(f"- {cert}")
+            parts.append("")
+
+        # Projects
+        if self.projects:
+            parts.append("## Projects\n")
+            for project in self.projects:
+                parts.append(f"- {project}")
+            parts.append("")
+
+        # Awards
+        if self.awards:
+            parts.append("## Awards & Honors\n")
+            for award in self.awards:
+                parts.append(f"- {award}")
+            parts.append("")
+
+        # Languages
+        if self.languages:
+            parts.append("## Languages\n")
+            parts.append(", ".join(self.languages))
+            parts.append("")
+
+        return "\n".join(parts).strip()
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ResumeModel':
@@ -437,3 +577,36 @@ class ResumeOptimizationResult:
     def get_total_changes(self) -> int:
         """Get total number of changes."""
         return len(self.changes)
+
+    def get_potentially_risky_changes(self) -> List[Tuple['ResumeChange', List[str]]]:
+        """
+        Get changes that may contain fabricated content.
+
+        Uses heuristic checks to identify changes that introduce:
+        - New metrics/numbers
+        - New organizations
+        - New technologies
+        - Significantly expanded content
+
+        Returns:
+            List of tuples (change, list of warning messages) for risky changes
+        """
+        from utils.authenticity_checks import get_potentially_risky_changes
+        return get_potentially_risky_changes(self.changes, self.original_resume)
+
+    def get_authenticity_report(self) -> dict:
+        """
+        Generate comprehensive authenticity report.
+
+        Returns:
+            Dictionary with:
+            - total_changes: Total number of changes
+            - flagged_changes: Number of flagged changes
+            - flag_rate: Percentage of changes flagged
+            - warning_categories: Breakdown by warning type
+            - risky_changes: List of (change, warnings) tuples
+            - is_safe: Boolean indicating if all changes appear safe
+            - recommendations: List of recommendations for review
+        """
+        from utils.authenticity_checks import generate_authenticity_report
+        return generate_authenticity_report(self.changes, self.original_resume)

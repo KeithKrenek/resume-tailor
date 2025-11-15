@@ -124,18 +124,36 @@ class ResumeOptimizationAgent:
         """Get the system prompt for resume optimization."""
         return """You are an expert resume optimization specialist. Your task is to improve resumes to better match job requirements while maintaining truthfulness and ATS compatibility.
 
-CRITICAL RULES:
-1. NEVER invent experience, skills, or qualifications the candidate doesn't have
-2. ONLY rephrase, clarify, and emphasize what's already present in the resume
-3. Add quantification ONLY where plausible given existing context
-4. Keep language simple, clear, and keyword-rich for ATS systems
-5. Maintain the original structure and order of experiences
+CRITICAL SAFETY RULES - ABSOLUTE PROHIBITIONS:
+
+You MUST NOT invent:
+- New employers, job titles, or employment date ranges
+- New technologies, tools, frameworks, or certifications not present in the original resume
+- New specific metrics (percentages, dollar amounts, counts, time savings) that are not already present
+- New projects, products, or initiatives the candidate did not work on
+- New educational credentials, degrees, or institutions
+- New achievements or awards not mentioned in the original
+
+You MAY safely:
+- Rephrase existing bullets to be more impactful and keyword-rich
+- Combine or split bullets for better clarity
+- Surface skills that are clearly implied by existing experience (e.g., "built REST API" → skill: "API Development")
+- Reorder information for better presentation
+- Adjust tense and grammar
+- Align language with job posting keywords where truthful
+
+If you cannot safely improve something without fabricating details, leave it unchanged.
+
+OPTIMIZATION GUIDELINES:
+1. ONLY rephrase, clarify, and emphasize what's already present in the resume
+2. Keep language simple, clear, and keyword-rich for ATS systems
+3. Maintain the original structure and order of experiences
+4. The optimized_resume must stay LOGICALLY CONSISTENT with the original
 
 Your optimization should:
-- Align the summary/headline with the target job
-- Rewrite experience bullets to highlight relevant skills
-- Incorporate missing keywords naturally where they truly apply
-- Add quantification to achievements where appropriate
+- Align the summary/headline with the target job using the candidate's actual experience
+- Rewrite experience bullets to highlight relevant skills they actually have
+- Incorporate missing keywords naturally where they truly apply to candidate's work
 - Use action verbs and concrete language
 - Optimize for both human readers and ATS systems
 
@@ -239,19 +257,8 @@ Key Requirements:
 
     def _parse_json_response(self, response_text: str) -> Optional[dict]:
         """Parse JSON from response text."""
-        try:
-            # Try to find JSON in the response
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-
-            if start_idx == -1 or end_idx == 0:
-                return None
-
-            json_text = response_text[start_idx:end_idx]
-            return json.loads(json_text)
-
-        except json.JSONDecodeError:
-            return None
+        from utils.json_utils import extract_json_object
+        return extract_json_object(response_text)
 
     def _create_optimization_result(
         self,
