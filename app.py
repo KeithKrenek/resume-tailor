@@ -24,6 +24,7 @@ from utils.session_manager import (
 from modules.input_collector import render_input_collection_page
 from modules.analysis import render_analysis_page
 from modules.optimization import render_optimization_page
+from modules.output import render_output_generation_page
 from agents.extraction_agent import extract_job_info
 
 
@@ -55,11 +56,9 @@ def render_sidebar():
         st.markdown("### 📋 Workflow Steps")
         steps = [
             "1️⃣ Input Collection",
-            "2️⃣ Job Analysis",
-            "3️⃣ Resume Analysis",
-            "4️⃣ Gap Identification",
-            "5️⃣ Resume Optimization",
-            "6️⃣ Output Generation"
+            "2️⃣ Analysis",
+            "3️⃣ Optimization",
+            "4️⃣ Output Generation"
         ]
 
         for i, step in enumerate(steps, 1):
@@ -150,6 +149,11 @@ def step_3_optimization():
     render_optimization_page()
 
 
+def step_4_output_generation():
+    """Handle Step 4: Output Generation."""
+    render_output_generation_page()
+
+
 def main():
     """Main application entry point."""
     # Configure page
@@ -171,12 +175,23 @@ def main():
         step_2_analysis()
     elif current_step == 3:
         step_3_optimization()
-    elif current_step >= 4:
-        st.title("🚧 Step 4+: Coming Soon")
-        st.info("Output generation and export features will be implemented in the next iteration.")
-        if st.button("← Back to Step 3"):
-            set_current_step(3)
-            st.rerun()
+    elif current_step == 4:
+        step_4_output_generation()
+    elif current_step >= 5:
+        st.title("🎉 All Steps Complete!")
+        st.success("Your resume has been optimized and generated successfully!")
+        st.info("You can now start a new resume or return to previous steps.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Start New Resume"):
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                set_current_step(1)
+                st.rerun()
+        with col2:
+            if st.button("← Back to Output Generation"):
+                set_current_step(4)
+                st.rerun()
     else:
         st.error(f"Invalid step: {current_step}")
 
