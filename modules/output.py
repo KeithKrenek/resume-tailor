@@ -272,17 +272,98 @@ def render_output_generation_page():
 
     if not authenticity_report.get('is_safe', True):
         with st.expander("⚠️ Authenticity Warnings", expanded=True):
-            st.warning(
-                f"**{authenticity_report['flagged_changes']} of {authenticity_report['total_changes']} "
-                f"changes were flagged for review ({authenticity_report['flag_rate']:.1f}%)**"
-            )
+            # Check if LLM-based report is available
+            has_llm_report = optimization_result.has_llm_authenticity_report()
 
-            st.markdown("**Please review the following before using this resume:**")
+            if has_llm_report:
+                # Display LLM-based report with rich details
+                st.warning(
+                    f"**AI-Powered Verification Found {authenticity_report['flagged_changes']} Issue(s)**\n\n"
+                    f"Risk Level: **{authenticity_report.get('overall_risk_level', 'unknown').upper()}** | "
+                    f"Total Changes Analyzed: {authenticity_report['total_changes']}"
+                )
 
-            for recommendation in authenticity_report.get('recommendations', []):
-                st.markdown(f"- {recommendation}")
+                st.info(f"📋 **Summary:** {authenticity_report.get('summary', 'Review required')}")
 
-            if authenticity_report.get('risky_changes'):
-                st.markdown("**Flagged Changes:**")
-                for change, warnings in authenticity_report['risky_changes']:
-                    st.markdown(f"- **{change.location}**: {', '.join(warnings)}")
+                # Display recommendations
+                if authenticity_report.get('recommendations'):
+                    st.markdown("**⚠️ Important Recommendations:**")
+                    for recommendation in authenticity_report['recommendations']:
+                        st.markdown(f"- {recommendation}")
+
+                # Display detailed issues
+                issues = authenticity_report.get('issues_found', [])
+                if issues:
+                    st.markdown("---")
+                    st.markdown("### 🔍 Detected Issues")
+
+                    # Group by severity
+                    high_issues = [i for i in issues if i.get('severity') == 'high']
+                    medium_issues = [i for i in issues if i.get('severity') == 'medium']
+                    low_issues = [i for i in issues if i.get('severity') == 'low']
+
+                    # Display high severity first
+                    if high_issues:
+                        st.markdown("#### 🚨 High Severity Issues")
+                        for issue in high_issues:
+                            with st.container():
+                                issue_type = issue.get('type', 'unknown').title()
+                                location = issue.get('location', 'unknown')
+
+                                st.markdown(f"**{issue_type}** at `{location}`")
+                                st.markdown(f"*{issue.get('explanation', 'No explanation provided')}*")
+
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.text_area(
+                                        "Original:",
+                                        value=issue.get('original_text', '')[:200],
+                                        height=100,
+                                        disabled=True,
+                                        key=f"orig_{issue.get('location', 'unknown')}"
+                                    )
+                                with col2:
+                                    st.text_area(
+                                        "Modified:",
+                                        value=issue.get('modified_text', '')[:200],
+                                        height=100,
+                                        disabled=True,
+                                        key=f"mod_{issue.get('location', 'unknown')}"
+                                    )
+
+                                st.success(f"💡 **Recommendation:** {issue.get('recommendation', 'Review carefully')}")
+                                st.markdown("---")
+
+                    # Display medium severity
+                    if medium_issues:
+                        st.markdown("#### ⚠️ Medium Severity Issues")
+                        for issue in medium_issues:
+                            issue_type = issue.get('type', 'unknown').title()
+                            location = issue.get('location', 'unknown')
+                            st.markdown(f"- **{issue_type}** at `{location}`: {issue.get('explanation', 'No explanation')}")
+                            st.markdown(f"  💡 {issue.get('recommendation', 'Review carefully')}")
+
+                    # Display low severity (collapsed)
+                    if low_issues:
+                        with st.expander(f"ℹ️ Low Severity Issues ({len(low_issues)})"):
+                            for issue in low_issues:
+                                issue_type = issue.get('type', 'unknown').title()
+                                location = issue.get('location', 'unknown')
+                                st.markdown(f"- **{issue_type}** at `{location}`: {issue.get('explanation', 'No explanation')}")
+
+            else:
+                # Fall back to heuristic-based display
+                st.warning(
+                    f"**{authenticity_report['flagged_changes']} of {authenticity_report['total_changes']} "
+                    f"changes were flagged for review ({authenticity_report['flag_rate']:.1f}%)**"
+                )
+
+                st.markdown("**Please review the following before using this resume:**")
+
+                for recommendation in authenticity_report.get('recommendations', []):
+                    st.markdown(f"- {recommendation}")
+
+                if authenticity_report.get('risky_changes'):
+                    st.markdown("**Flagged Changes:**")
+                    for change, warnings in authenticity_report['risky_changes']:
+                        st.markdown(f"- **{change.location}**: {', '.join(warnings)}")

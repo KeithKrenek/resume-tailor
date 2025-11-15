@@ -530,7 +530,8 @@ class ResumeOptimizationResult:
     summary_of_improvements: List[str] = field(default_factory=list)
     optimization_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     style_used: str = "balanced"  # "conservative", "balanced", "aggressive"
-    
+    authenticity_report: Optional[Dict[str, Any]] = None  # LLM-based authenticity report
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -539,7 +540,8 @@ class ResumeOptimizationResult:
             'changes': [change.to_dict() for change in self.changes],
             'summary_of_improvements': self.summary_of_improvements,
             'optimization_timestamp': self.optimization_timestamp,
-            'style_used': self.style_used
+            'style_used': self.style_used,
+            'authenticity_report': self.authenticity_report
         }
     
     def to_json(self) -> str:
@@ -550,14 +552,15 @@ class ResumeOptimizationResult:
     def from_dict(cls, data: Dict[str, Any]) -> 'ResumeOptimizationResult':
         """Create from dictionary."""
         changes = [ResumeChange.from_dict(c) for c in data.get('changes', [])]
-        
+
         return cls(
             original_resume=ResumeModel.from_dict(data['original_resume']),
             optimized_resume=ResumeModel.from_dict(data['optimized_resume']),
             changes=changes,
             summary_of_improvements=data.get('summary_of_improvements', []),
             optimization_timestamp=data.get('optimization_timestamp', datetime.now().isoformat()),
-            style_used=data.get('style_used', 'balanced')
+            style_used=data.get('style_used', 'balanced'),
+            authenticity_report=data.get('authenticity_report')
         )
     
     def get_change_count_by_type(self) -> Dict[str, int]:
@@ -590,17 +593,63 @@ class ResumeOptimizationResult:
 
     def get_authenticity_report(self) -> dict:
         """
-        Generate comprehensive authenticity report.
+        Get comprehensive authenticity report.
+
+        Prioritizes LLM-based report if available, falls back to heuristic-based.
 
         Returns:
             Dictionary with:
-            - total_changes: Total number of changes
-            - flagged_changes: Number of flagged changes
+            - total_changes: Total number of changes analyzed
+            - flagged_changes: Number of flagged changes/issues
             - flag_rate: Percentage of changes flagged
-            - warning_categories: Breakdown by warning type
-            - risky_changes: List of (change, warnings) tuples
             - is_safe: Boolean indicating if all changes appear safe
             - recommendations: List of recommendations for review
+            - issues_found: List of specific issues (if LLM-based)
+            - overall_risk_level: Risk level (if LLM-based)
+            - summary: Summary text (if LLM-based)
+            - risky_changes: List of (change, warnings) tuples (if heuristic-based)
+            - warning_categories: Breakdown by warning type
         """
+        # Use LLM-based report if available
+        if self.authenticity_report is not None:
+            # Enrich with additional metrics for UI compatibility
+            report = self.authenticity_report.copy()
+
+            # Add computed fields for backward compatibility
+            issues_count = len(report.get('issues_found', []))
+            report['flagged_changes'] = issues_count
+            report['total_changes'] = report.get('total_changes_analyzed', len(self.changes))
+
+            if report['total_changes'] > 0:
+                report['flag_rate'] = (issues_count / report['total_changes']) * 100
+            else:
+                report['flag_rate'] = 0.0
+
+            # Map issues to categories for UI
+            warning_categories = {}
+            for issue in report.get('issues_found', []):
+                issue_type = issue.get('type', 'unknown')
+                warning_categories[issue_type] = warning_categories.get(issue_type, 0) + 1
+
+            report['warning_categories'] = warning_categories
+
+            return report
+
+        # Fall back to heuristic-based report
         from utils.authenticity_checks import generate_authenticity_report
         return generate_authenticity_report(self.changes, self.original_resume)
+
+    def has_llm_authenticity_report(self) -> bool:
+        """Check if LLM-based authenticity report is available."""
+        return self.authenticity_report is not None
+
+    def get_authenticity_issues(self) -> List[Dict[str, Any]]:
+        """
+        Get list of authenticity issues from LLM report.
+
+        Returns:
+            List of issue dictionaries, empty if no LLM report available
+        """
+        if self.authenticity_report:
+            return self.authenticity_report.get('issues_found', [])
+        return []
