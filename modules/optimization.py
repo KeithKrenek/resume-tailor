@@ -8,7 +8,7 @@ from modules.models import (
     JobModel, ResumeModel, GapAnalysis,
     ResumeOptimizationResult, ChangeType
 )
-from agents.resume_optimization_agent import optimize_resume
+from services.optimization_service import run_optimization, validate_optimization_inputs
 from utils.output_manager import OutputManager
 from utils.session_manager import (
     get_all_inputs,
@@ -41,7 +41,7 @@ def perform_optimization(
     style: str
 ) -> tuple[Optional[ResumeOptimizationResult], list]:
     """
-    Perform resume optimization.
+    Perform resume optimization using the service layer.
 
     Args:
         job: Job model
@@ -54,16 +54,31 @@ def perform_optimization(
     """
     errors = []
 
+    # Validate inputs first
+    is_valid, error_msg = validate_optimization_inputs(job, resume, gap)
+    if not is_valid:
+        st.error(f"❌ {error_msg}")
+        return None, [error_msg]
+
     with st.status("✨ Optimizing resume...", expanded=True) as status:
         st.write(f"Using {style} optimization style...")
         st.write("Analyzing gaps and rewriting content...")
 
-        success, result, error = optimize_resume(job, resume, gap, style)
-
-        if success and result:
+        try:
+            result = run_optimization(
+                job=job,
+                resume=resume,
+                gap=gap,
+                style=style
+            )
+            success = True
+            error = ""
             st.write(f"✅ Optimization complete - {len(result.changes)} changes made")
             status.update(label="✅ Resume optimized", state="complete")
-        else:
+        except ValueError as e:
+            result = None
+            success = False
+            error = str(e)
             st.error(f"❌ {error}")
             errors.append(error)
             status.update(label="❌ Optimization failed", state="error")
@@ -130,28 +145,130 @@ def render_optimization_controls() -> tuple[str, bool]:
     return style, run_optimization
 
 
-def render_summary_metrics(result: ResumeOptimizationResult):
+def render_summary_metrics(result: ResumeOptimizationResult, gap_before=None, gap_after=None):
     """Render summary metrics of optimization."""
     st.markdown("### 📊 Optimization Summary")
 
-    col1, col2, col3, col4 = st.columns(4)
+    # Show gap analysis before/after if available
+    if gap_before and gap_after:
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            coverage_delta = gap_after.coverage_percentage - gap_before.coverage_percentage
+            st.metric(
+                "Match Coverage",
+                f"{gap_after.coverage_percentage:.1f}%",
+                delta=f"{coverage_delta:+.1f}%",
+                help="Percentage of job requirements covered"
+            )
+
+        with col2:
+            before_matched = len(gap_before.matched_skills)
+            after_matched = len(gap_after.matched_skills)
+            st.metric(
+                "Skills Matched",
+                after_matched,
+                delta=after_matched - before_matched,
+                help="Number of required skills present"
+            )
+
+        with col3:
+            before_missing = len(gap_before.missing_required_skills)
+            after_missing = len(gap_after.missing_required_skills)
+            st.metric(
+                "Missing Skills",
+                after_missing,
+                delta=after_missing - before_missing,
+                delta_color="inverse",
+                help="Required skills not found in resume"
+            )
+
+        with col4:
+            st.metric(
+                "Total Changes",
+                result.get_total_changes(),
+                help="Number of modifications made"
+            )
+
+    else:
+        # Fallback to original metrics if gap analysis not available
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Total Changes", result.get_total_changes())
+
+        with col2:
+            change_counts = result.get_change_count_by_type()
+            bullet_changes = change_counts.get('experience_bullet', 0)
+            st.metric("Bullets Improved", bullet_changes)
+
+        with col3:
+            summary_changed = 1 if change_counts.get('summary', 0) > 0 else 0
+            headline_changed = 1 if change_counts.get('headline', 0) > 0 else 0
+            st.metric("Sections Updated", summary_changed + headline_changed)
+
+        with col4:
+            skills_changes = change_counts.get('skills_section', 0)
+            st.metric("Skills Added/Modified", skills_changes)
+
+    # Authenticity Check Section
+    st.markdown("---")
+    st.markdown("#### 🔍 Authenticity Check")
+
+    report = result.get_authenticity_report()
+    flagged_count = report.get("flagged_changes", 0)
+    total_changes = report.get("total_changes", len(result.changes))
+
+    col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("Total Changes", result.get_total_changes())
+        st.metric(
+            "Flagged Changes",
+            flagged_count,
+            help="Changes that may introduce new content"
+        )
 
     with col2:
-        change_counts = result.get_change_count_by_type()
-        bullet_changes = change_counts.get('experience_bullet', 0)
-        st.metric("Bullets Improved", bullet_changes)
+        flag_rate = report.get("flag_rate", 0)
+        st.metric(
+            "Flag Rate",
+            f"{flag_rate:.1f}%",
+            help="Percentage of changes flagged for review"
+        )
 
     with col3:
-        summary_changed = 1 if change_counts.get('summary', 0) > 0 else 0
-        headline_changed = 1 if change_counts.get('headline', 0) > 0 else 0
-        st.metric("Sections Updated", summary_changed + headline_changed)
+        is_safe = report.get("is_safe", True)
+        if is_safe:
+            st.success("✓ No concerns detected")
+        else:
+            st.warning(f"⚠️ Review {flagged_count} changes")
 
-    with col4:
-        skills_changes = change_counts.get('skills_section', 0)
-        st.metric("Skills Added/Modified", skills_changes)
+    # Show warning if there are risky changes
+    if flagged_count > 0:
+        categories = report.get("warning_categories", {})
+        warnings = []
+        if categories.get("new_metrics", 0) > 0:
+            warnings.append(f"{categories['new_metrics']} with new metrics")
+        if categories.get("new_organizations", 0) > 0:
+            warnings.append(f"{categories['new_organizations']} with new organizations")
+        if categories.get("new_technologies", 0) > 0:
+            warnings.append(f"{categories['new_technologies']} with new technologies")
+        if categories.get("expanded_content", 0) > 0:
+            warnings.append(f"{categories['expanded_content']} with expanded content")
+
+        if warnings:
+            st.warning(
+                f"**Authenticity Alert:** Found changes - " + ", ".join(warnings) + ".\n\n"
+                "Please review these carefully before using the resume. "
+                "Use the 'Show only flagged changes' filter in the Changes tab."
+            )
+
+        # Show recommendations
+        recommendations = report.get("recommendations", [])
+        if recommendations:
+            with st.expander("📋 Review Recommendations"):
+                for rec in recommendations:
+                    st.markdown(f"- {rec}")
 
 
 def render_improvements_list(result: ResumeOptimizationResult):
@@ -240,8 +357,26 @@ def render_changes_table(result: ResumeOptimizationResult):
         st.info("No changes were made.")
         return
 
+    # Get risky changes
+    risky_changes_list = result.get_potentially_risky_changes()
+    risky_change_ids = {change.id for change, warnings in risky_changes_list}
+
+    # Show authenticity alert if there are risky changes
+    if risky_changes_list:
+        with st.expander("⚠️ Authenticity Check - Review Recommended", expanded=False):
+            st.warning(
+                f"**{len(risky_changes_list)} change(s) flagged for review**\n\n"
+                "These changes may introduce new information not present in the original resume. "
+                "Please verify accuracy before using."
+            )
+            for change, warnings in risky_changes_list[:5]:  # Show first 5
+                st.markdown(f"**{change.location}**")
+                for warning in warnings:
+                    st.markdown(f"- {warning}")
+                st.markdown("---")
+
     # Filter controls
-    col1, col2 = st.columns([3, 1])
+    col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         change_types = list(set(c.change_type.value for c in result.changes))
         selected_types = st.multiselect(
@@ -250,6 +385,8 @@ def render_changes_table(result: ResumeOptimizationResult):
             default=change_types
         )
     with col2:
+        show_flagged = st.checkbox("Show only flagged changes", value=False)
+    with col3:
         max_changes = st.number_input(
             "Show first N:",
             min_value=5,
@@ -261,17 +398,35 @@ def render_changes_table(result: ResumeOptimizationResult):
     filtered_changes = [
         c for c in result.changes
         if c.change_type.value in selected_types
-    ][:max_changes]
+    ]
+
+    if show_flagged:
+        filtered_changes = [c for c in filtered_changes if c.id in risky_change_ids]
+
+    filtered_changes = filtered_changes[:max_changes]
 
     # Create DataFrame
     changes_data = []
     for change in filtered_changes:
+        type_text = change.change_type.value.replace('_', ' ').title()
+        risk_text = ""
+
+        # Check if this change is risky
+        if change.id in risky_change_ids:
+            risk_text = "⚠️ WARNING"
+            # Get specific warnings for this change
+            change_warnings = next((w for c, w in risky_changes_list if c.id == change.id), [])
+            if change_warnings:
+                # Show first warning as tooltip
+                risk_text += f" ({change_warnings[0]})"
+
         changes_data.append({
-            'Type': change.change_type.value.replace('_', ' ').title(),
+            'Type': type_text,
             'Location': change.location,
             'Before': change.before[:80] + "..." if len(change.before) > 80 else change.before,
             'After': change.after[:80] + "..." if len(change.after) > 80 else change.after,
-            'Rationale': change.rationale
+            'Rationale': change.rationale,
+            'Risk': risk_text
         })
 
     df = pd.DataFrame(changes_data)
@@ -288,6 +443,13 @@ def render_changes_table(result: ResumeOptimizationResult):
 
             if change_idx is not None:
                 change = filtered_changes[change_idx]
+
+                # Show warning if this change is risky
+                if change.id in risky_change_ids:
+                    warnings = next((w for c, w in risky_changes_list if c.id == change.id), [])
+                    if warnings:
+                        st.warning("⚠️ **Authenticity Check**: " + " | ".join(warnings))
+
                 st.markdown(f"**Type:** {change.change_type.value}")
                 st.markdown(f"**Location:** {change.location}")
                 st.markdown(f"**Rationale:** {change.rationale}")
@@ -372,8 +534,16 @@ def render_optimization_page() -> bool:
     # Display results
     st.markdown("---")
 
-    # Summary metrics
-    render_summary_metrics(result)
+    # Compute gap analysis for optimized resume
+    from modules.gap_analyzer import perform_gap_analysis_for_result
+    try:
+        gap_after = perform_gap_analysis_for_result(job_model, result)
+    except Exception as e:
+        st.warning(f"Could not compute gap analysis for optimized resume: {e}")
+        gap_after = None
+
+    # Summary metrics with before/after comparison
+    render_summary_metrics(result, gap_before=gap_analysis, gap_after=gap_after)
 
     st.markdown("---")
 
@@ -397,6 +567,22 @@ def render_optimization_page() -> bool:
 
     with tab3:
         st.markdown("### 📄 Complete Optimized Resume")
+
+        # Download buttons
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            # Generate markdown version
+            optimized_md = result.optimized_resume.to_markdown()
+            st.download_button(
+                label="📥 Download Markdown",
+                data=optimized_md,
+                file_name=f"optimized_resume_{result.optimized_resume.name or 'resume'}.md".replace(" ", "_"),
+                mime="text/markdown",
+                help="Download the optimized resume as a Markdown file"
+            )
+
+        st.markdown("---")
+
         st.markdown(f"**Name:** {result.optimized_resume.name}")
         if result.optimized_resume.email:
             st.markdown(f"**Email:** {result.optimized_resume.email}")

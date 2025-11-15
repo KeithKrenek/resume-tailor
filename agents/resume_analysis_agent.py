@@ -3,12 +3,17 @@
 import os
 import json
 from typing import Tuple, Optional
+from utils.logging_config import get_logger
+
+# Setup logging
+logger = get_logger(__name__)
 
 try:
     from anthropic import Anthropic
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
+    logger.warning("Anthropic library not available")
 
 from modules.models import ResumeModel, ExperienceItem, EducationItem
 from config.settings import ANTHROPIC_API_KEY, DEFAULT_MODEL
@@ -30,8 +35,10 @@ class ResumeAnalysisAgent:
         if ANTHROPIC_AVAILABLE and self.api_key:
             try:
                 self.client = Anthropic(api_key=self.api_key)
+                logger.info("Anthropic client initialized successfully")
             except Exception as e:
-                print(f"Warning: Could not initialize Anthropic client: {e}")
+                logger.error(f"Could not initialize Anthropic client: {e}")
+                self.client = None
 
     def analyze_resume(
         self,
@@ -49,11 +56,16 @@ class ResumeAnalysisAgent:
             Tuple of (success, ResumeModel or None, error_message)
         """
         if not self.client:
-            return False, None, "Anthropic API client not available. Please set ANTHROPIC_API_KEY."
+            error_msg = "Anthropic API client not available. Please set ANTHROPIC_API_KEY."
+            logger.error(error_msg)
+            return False, None, error_msg
 
         try:
+            logger.info("Starting resume analysis")
+
             # Construct the analysis prompt
             prompt = self._build_analysis_prompt(resume_text, metadata)
+            logger.debug(f"Built analysis prompt ({len(prompt)} chars)")
 
             # Call Claude API
             response = self.client.messages.create(
@@ -68,19 +80,24 @@ class ResumeAnalysisAgent:
 
             # Parse response
             response_text = response.content[0].text
+            logger.debug(f"Received API response ({len(response_text)} chars)")
 
             # Extract JSON from response
             resume_data = self._parse_json_response(response_text)
 
             if not resume_data:
+                logger.error("Failed to parse resume analysis response - no valid JSON found")
+                logger.debug(f"Response preview: {response_text[:200]}...")
                 return False, None, "Failed to parse resume analysis response"
 
             # Create ResumeModel from parsed data
             resume_model = self._create_resume_model(resume_data, resume_text, metadata)
+            logger.info(f"Resume analysis complete: {resume_model.name or 'Unknown name'}")
 
             return True, resume_model, ""
 
         except Exception as e:
+            logger.exception("Error analyzing resume")
             return False, None, f"Error analyzing resume: {str(e)}"
 
     def _get_system_prompt(self) -> str:
@@ -168,19 +185,8 @@ Be thorough and accurate. Extract all skills mentioned or implied in experience 
 
     def _parse_json_response(self, response_text: str) -> Optional[dict]:
         """Parse JSON from response text."""
-        try:
-            # Try to find JSON in the response
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-
-            if start_idx == -1 or end_idx == 0:
-                return None
-
-            json_text = response_text[start_idx:end_idx]
-            return json.loads(json_text)
-
-        except json.JSONDecodeError:
-            return None
+        from utils.json_utils import extract_json_object
+        return extract_json_object(response_text)
 
     def _create_resume_model(
         self,

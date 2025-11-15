@@ -357,3 +357,20 @@ def perform_gap_analysis(job: JobModel, resume: ResumeModel) -> GapAnalysis:
     """
     analyzer = GapAnalyzer()
     return analyzer.analyze(job, resume)
+
+
+def perform_gap_analysis_for_result(job: JobModel, result: 'ResumeOptimizationResult') -> GapAnalysis:
+    """
+    Perform gap analysis on the optimized resume from an optimization result.
+
+    This allows comparing the gap analysis before and after optimization.
+
+    Args:
+        job: Structured job posting
+        result: Resume optimization result containing optimized resume
+
+    Returns:
+        GapAnalysis object for the optimized resume
+    """
+    analyzer = GapAnalyzer()
+    return analyzer.analyze(job, result.optimized_resume)

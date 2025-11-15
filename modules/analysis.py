@@ -5,9 +5,7 @@ from typing import Optional, Tuple
 import pandas as pd
 
 from modules.models import JobModel, ResumeModel, GapAnalysis
-from agents.job_analysis_agent import analyze_job_posting
-from agents.resume_analysis_agent import analyze_resume
-from modules.gap_analyzer import perform_gap_analysis
+from services.analysis_service import run_analysis, validate_inputs
 from utils.output_manager import OutputManager
 from utils.session_manager import (
     get_all_inputs,
@@ -35,7 +33,7 @@ def render_progress_bar(current_step: int) -> None:
 
 def perform_analysis() -> Tuple[Optional[JobModel], Optional[ResumeModel], Optional[GapAnalysis], list]:
     """
-    Perform job and resume analysis.
+    Perform job and resume analysis using the service layer.
 
     Returns:
         Tuple of (JobModel, ResumeModel, GapAnalysis, errors)
@@ -43,56 +41,41 @@ def perform_analysis() -> Tuple[Optional[JobModel], Optional[ResumeModel], Optio
     errors = []
     inputs = get_all_inputs()
 
-    # Analyze job posting
+    # Validate inputs first
+    is_valid, error_msg = validate_inputs(
+        job_description=inputs['job_description'],
+        resume_text=inputs['resume_text']
+    )
+    if not is_valid:
+        st.error(f"❌ {error_msg}")
+        return None, None, None, [error_msg]
+
+    # Run complete analysis pipeline through service layer
     job_model = None
-    with st.status("🔍 Analyzing job posting...", expanded=True) as status:
-        st.write("Extracting job requirements and skills...")
-        success, job_model, error = analyze_job_posting(
-            job_description=inputs['job_description'],
-            job_title=inputs.get('job_title'),
-            company_name=inputs.get('company_name')
-        )
-
-        if success and job_model:
-            st.write("✅ Job analysis complete")
-            status.update(label="✅ Job posting analyzed", state="complete")
-        else:
-            st.error(f"❌ {error}")
-            errors.append(f"Job analysis: {error}")
-            status.update(label="❌ Job analysis failed", state="error")
-            return None, None, None, errors
-
-    # Analyze resume
     resume_model = None
-    with st.status("📝 Analyzing resume...", expanded=True) as status:
-        st.write("Extracting experience, education, and skills...")
-        success, resume_model, error = analyze_resume(
-            resume_text=inputs['resume_text'],
-            metadata=inputs.get('resume_metadata', {})
-        )
-
-        if success and resume_model:
-            st.write("✅ Resume analysis complete")
-            status.update(label="✅ Resume analyzed", state="complete")
-        else:
-            st.error(f"❌ {error}")
-            errors.append(f"Resume analysis: {error}")
-            status.update(label="❌ Resume analysis failed", state="error")
-            return job_model, None, None, errors
-
-    # Perform gap analysis
     gap_analysis = None
-    with st.status("🔬 Performing gap analysis...", expanded=True) as status:
-        st.write("Comparing job requirements with resume...")
+
+    with st.status("🔍 Analyzing job and resume...", expanded=True) as status:
+        st.write("Step 1: Analyzing job posting...")
+        st.write("Step 2: Analyzing resume...")
+        st.write("Step 3: Performing gap analysis...")
+
         try:
-            gap_analysis = perform_gap_analysis(job_model, resume_model)
-            st.write("✅ Gap analysis complete")
-            status.update(label="✅ Gap analysis complete", state="complete")
-        except Exception as e:
-            st.error(f"❌ {str(e)}")
-            errors.append(f"Gap analysis: {str(e)}")
-            status.update(label="❌ Gap analysis failed", state="error")
-            return job_model, resume_model, None, errors
+            job_model, resume_model, gap_analysis = run_analysis(
+                job_description=inputs['job_description'],
+                resume_text=inputs['resume_text'],
+                metadata=inputs.get('resume_metadata'),
+                job_title=inputs.get('job_title'),
+                company_name=inputs.get('company_name')
+            )
+            st.write("✅ Analysis complete")
+            status.update(label="✅ Analysis complete", state="complete")
+        except ValueError as e:
+            error_msg = str(e)
+            st.error(f"❌ {error_msg}")
+            errors.append(error_msg)
+            status.update(label="❌ Analysis failed", state="error")
+            return None, None, None, errors
 
     # Save outputs
     with st.status("💾 Saving analysis results...", expanded=False) as status:

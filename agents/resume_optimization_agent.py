@@ -4,12 +4,17 @@ import os
 import json
 import uuid
 from typing import Tuple, Optional
+from utils.logging_config import get_logger
+
+# Setup logging
+logger = get_logger(__name__)
 
 try:
     from anthropic import Anthropic
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
+    logger.warning("Anthropic library not available")
 
 from modules.models import (
     JobModel, ResumeModel, GapAnalysis,
@@ -53,8 +58,10 @@ class ResumeOptimizationAgent:
         if ANTHROPIC_AVAILABLE and self.api_key:
             try:
                 self.client = Anthropic(api_key=self.api_key)
+                logger.info("Anthropic client initialized successfully")
             except Exception as e:
-                print(f"Warning: Could not initialize Anthropic client: {e}")
+                logger.error(f"Could not initialize Anthropic client: {e}")
+                self.client = None
 
     def optimize_resume(
         self,
@@ -76,17 +83,24 @@ class ResumeOptimizationAgent:
             Tuple of (success, ResumeOptimizationResult or None, error_message)
         """
         if not self.client:
-            return False, None, "Anthropic API client not available. Please set ANTHROPIC_API_KEY."
+            error_msg = "Anthropic API client not available. Please set ANTHROPIC_API_KEY."
+            logger.error(error_msg)
+            return False, None, error_msg
 
         if style not in self.STYLES:
-            return False, None, f"Invalid style: {style}. Choose from: {list(self.STYLES.keys())}"
+            error_msg = f"Invalid style: {style}. Choose from: {list(self.STYLES.keys())}"
+            logger.error(error_msg)
+            return False, None, error_msg
 
         try:
+            logger.info(f"Starting resume optimization (style={style}, job={job.title})")
+
             # Get style configuration
             style_config = self.STYLES[style]
 
             # Build optimization prompt
             prompt = self._build_optimization_prompt(job, resume, gap, style_config)
+            logger.debug(f"Built optimization prompt ({len(prompt)} chars, temp={style_config['temperature']})")
 
             # Call Claude API
             response = self.client.messages.create(
@@ -101,11 +115,14 @@ class ResumeOptimizationAgent:
 
             # Parse response
             response_text = response.content[0].text
+            logger.debug(f"Received API response ({len(response_text)} chars)")
 
             # Extract JSON from response
             optimization_data = self._parse_json_response(response_text)
 
             if not optimization_data:
+                logger.error("Failed to parse optimization response - no valid JSON found")
+                logger.debug(f"Response preview: {response_text[:200]}...")
                 return False, None, "Failed to parse optimization response"
 
             # Create ResumeOptimizationResult
@@ -115,27 +132,48 @@ class ResumeOptimizationAgent:
                 style=style
             )
 
+            logger.info(f"Optimization complete: {len(result.changes)} changes made")
+
             return True, result, ""
 
         except Exception as e:
+            logger.exception("Error optimizing resume")
             return False, None, f"Error optimizing resume: {str(e)}"
 
     def _get_system_prompt(self) -> str:
         """Get the system prompt for resume optimization."""
         return """You are an expert resume optimization specialist. Your task is to improve resumes to better match job requirements while maintaining truthfulness and ATS compatibility.
 
-CRITICAL RULES:
-1. NEVER invent experience, skills, or qualifications the candidate doesn't have
-2. ONLY rephrase, clarify, and emphasize what's already present in the resume
-3. Add quantification ONLY where plausible given existing context
-4. Keep language simple, clear, and keyword-rich for ATS systems
-5. Maintain the original structure and order of experiences
+CRITICAL SAFETY RULES - ABSOLUTE PROHIBITIONS:
+
+You MUST NOT invent:
+- New employers, job titles, or employment date ranges
+- New technologies, tools, frameworks, or certifications not present in the original resume
+- New specific metrics (percentages, dollar amounts, counts, time savings) that are not already present
+- New projects, products, or initiatives the candidate did not work on
+- New educational credentials, degrees, or institutions
+- New achievements or awards not mentioned in the original
+
+You MAY safely:
+- Rephrase existing bullets to be more impactful and keyword-rich
+- Combine or split bullets for better clarity
+- Surface skills that are clearly implied by existing experience (e.g., "built REST API" → skill: "API Development")
+- Reorder information for better presentation
+- Adjust tense and grammar
+- Align language with job posting keywords where truthful
+
+If you cannot safely improve something without fabricating details, leave it unchanged.
+
+OPTIMIZATION GUIDELINES:
+1. ONLY rephrase, clarify, and emphasize what's already present in the resume
+2. Keep language simple, clear, and keyword-rich for ATS systems
+3. Maintain the original structure and order of experiences
+4. The optimized_resume must stay LOGICALLY CONSISTENT with the original
 
 Your optimization should:
-- Align the summary/headline with the target job
-- Rewrite experience bullets to highlight relevant skills
-- Incorporate missing keywords naturally where they truly apply
-- Add quantification to achievements where appropriate
+- Align the summary/headline with the target job using the candidate's actual experience
+- Rewrite experience bullets to highlight relevant skills they actually have
+- Incorporate missing keywords naturally where they truly apply to candidate's work
 - Use action verbs and concrete language
 - Optimize for both human readers and ATS systems
 
@@ -239,19 +277,8 @@ Key Requirements:
 
     def _parse_json_response(self, response_text: str) -> Optional[dict]:
         """Parse JSON from response text."""
-        try:
-            # Try to find JSON in the response
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-
-            if start_idx == -1 or end_idx == 0:
-                return None
-
-            json_text = response_text[start_idx:end_idx]
-            return json.loads(json_text)
-
-        except json.JSONDecodeError:
-            return None
+        from utils.json_utils import extract_json_object
+        return extract_json_object(response_text)
 
     def _create_optimization_result(
         self,

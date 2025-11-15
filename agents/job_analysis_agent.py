@@ -3,12 +3,17 @@
 import os
 import json
 from typing import Tuple, Optional
+from utils.logging_config import get_logger
+
+# Setup logging
+logger = get_logger(__name__)
 
 try:
     from anthropic import Anthropic
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
+    logger.warning("Anthropic library not available")
 
 from modules.models import JobModel, JobRequirement
 from config.settings import ANTHROPIC_API_KEY, DEFAULT_MODEL
@@ -30,8 +35,10 @@ class JobAnalysisAgent:
         if ANTHROPIC_AVAILABLE and self.api_key:
             try:
                 self.client = Anthropic(api_key=self.api_key)
+                logger.info("Anthropic client initialized successfully")
             except Exception as e:
-                print(f"Warning: Could not initialize Anthropic client: {e}")
+                logger.error(f"Could not initialize Anthropic client: {e}")
+                self.client = None
 
     def analyze_job(
         self,
@@ -51,11 +58,16 @@ class JobAnalysisAgent:
             Tuple of (success, JobModel or None, error_message)
         """
         if not self.client:
-            return False, None, "Anthropic API client not available. Please set ANTHROPIC_API_KEY."
+            error_msg = "Anthropic API client not available. Please set ANTHROPIC_API_KEY."
+            logger.error(error_msg)
+            return False, None, error_msg
 
         try:
+            logger.info(f"Starting job analysis (title={job_title}, company={company_name})")
+
             # Construct the analysis prompt
             prompt = self._build_analysis_prompt(job_description, job_title, company_name)
+            logger.debug(f"Built analysis prompt ({len(prompt)} chars)")
 
             # Call Claude API
             response = self.client.messages.create(
@@ -70,19 +82,24 @@ class JobAnalysisAgent:
 
             # Parse response
             response_text = response.content[0].text
+            logger.debug(f"Received API response ({len(response_text)} chars)")
 
             # Extract JSON from response
             job_data = self._parse_json_response(response_text)
 
             if not job_data:
+                logger.error("Failed to parse job analysis response - no valid JSON found")
+                logger.debug(f"Response preview: {response_text[:200]}...")
                 return False, None, "Failed to parse job analysis response"
 
             # Create JobModel from parsed data
             job_model = self._create_job_model(job_data, job_description)
+            logger.info(f"Job analysis complete: {job_model.title} at {job_model.company or 'Unknown'}")
 
             return True, job_model, ""
 
         except Exception as e:
+            logger.exception("Error analyzing job")
             return False, None, f"Error analyzing job: {str(e)}"
 
     def _get_system_prompt(self) -> str:
@@ -145,19 +162,8 @@ Be thorough and accurate. Extract all relevant information."""
 
     def _parse_json_response(self, response_text: str) -> Optional[dict]:
         """Parse JSON from response text."""
-        try:
-            # Try to find JSON in the response
-            start_idx = response_text.find('{')
-            end_idx = response_text.rfind('}') + 1
-
-            if start_idx == -1 or end_idx == 0:
-                return None
-
-            json_text = response_text[start_idx:end_idx]
-            return json.loads(json_text)
-
-        except json.JSONDecodeError:
-            return None
+        from utils.json_utils import extract_json_object
+        return extract_json_object(response_text)
 
     def _create_job_model(self, data: dict, raw_text: str) -> JobModel:
         """Create JobModel from parsed data."""
