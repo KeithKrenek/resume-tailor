@@ -22,6 +22,7 @@ from utils.session_manager import (
     get_all_inputs
 )
 from modules.input_collector import render_input_collection_page
+from modules.analysis import render_analysis_page
 from agents.extraction_agent import extract_job_info
 
 
@@ -138,34 +139,9 @@ def step_1_input_collection():
         st.rerun()
 
 
-def step_2_placeholder():
-    """Placeholder for Step 2."""
-    st.title("🔍 Step 2: Job Analysis")
-    st.info("This step will be implemented next. It will analyze the job description to extract key requirements, skills, and qualifications.")
-
-    inputs = get_all_inputs()
-
-    # Show what we have
-    st.markdown("### Collected Information")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("**Job Information:**")
-        st.markdown(f"- **Title:** {inputs.get('job_title', 'N/A')}")
-        st.markdown(f"- **Company:** {inputs.get('company_name', 'N/A')}")
-        st.markdown(f"- **Description Length:** {len(inputs.get('job_description', ''))} chars")
-
-    with col2:
-        st.markdown("**Resume Information:**")
-        metadata = inputs.get('resume_metadata', {})
-        st.markdown(f"- **Email:** {metadata.get('email', 'N/A')}")
-        st.markdown(f"- **Has Experience:** {'✅' if metadata.get('has_experience') else '❌'}")
-        st.markdown(f"- **Has Education:** {'✅' if metadata.get('has_education') else '❌'}")
-
-    st.markdown("---")
-    if st.button("← Back to Step 1"):
-        set_current_step(1)
-        st.rerun()
+def step_2_analysis():
+    """Handle Step 2: Job and Resume Analysis."""
+    render_analysis_page()
 
 
 def main():
@@ -186,7 +162,13 @@ def main():
     if current_step == 1:
         step_1_input_collection()
     elif current_step == 2:
-        step_2_placeholder()
+        step_2_analysis()
+    elif current_step == 3:
+        st.title("🚧 Step 3: Coming Soon")
+        st.info("Resume optimization will be implemented in the next iteration.")
+        if st.button("← Back to Step 2"):
+            set_current_step(2)
+            st.rerun()
     else:
         st.error(f"Invalid step: {current_step}")
 
