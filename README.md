@@ -63,11 +63,23 @@ Resume Tailor is a Streamlit-based application that uses AI agents to automatica
    pip install -r requirements.txt
    ```
 
-3. **Set up environment variables (optional)**
+3. **Set up environment variables**
    ```bash
+   # Copy the example file
    cp .env.example .env
-   # Edit .env and add your ANTHROPIC_API_KEY if using AI extraction
+
+   # Edit .env and add your API key
+   # ANTHROPIC_API_KEY=your_actual_api_key_here
    ```
+
+   **Get your API key:** https://console.anthropic.com/
+
+   **Verify setup:**
+   ```bash
+   python3 check_env.py
+   ```
+
+   📖 **See [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md) for detailed configuration help**
 
 4. **Run the application**
    ```bash
@@ -82,12 +94,14 @@ Resume Tailor is a Streamlit-based application that uses AI agents to automatica
 ```
 resume-tailor/
 ├── app.py                      # Main Streamlit application
+├── check_env.py                # Environment verification script
 ├── requirements.txt            # Python dependencies
 ├── .env.example               # Environment variables template
+├── ENV_SETUP_GUIDE.md         # Detailed environment setup guide
 ├── README.md                  # This file
 │
 ├── config/
-│   └── settings.py            # Application configuration
+│   └── settings.py            # Application configuration (loads .env)
 │
 ├── modules/
 │   ├── input_collector.py     # Step 1: Input collection UI
@@ -180,15 +194,41 @@ The scraper has optimized support for:
 
 ## 🔑 Environment Variables
 
-Create a `.env` file with the following (optional):
+The application uses a `.env` file for configuration. See **[ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md)** for complete documentation.
+
+### Quick Setup
 
 ```bash
-# Anthropic API Key (for AI-powered extraction)
+# 1. Copy the example file
+cp .env.example .env
+
+# 2. Add your API key
+# ANTHROPIC_API_KEY=your_actual_api_key_here
+```
+
+### Supported Variables
+
+```bash
+# REQUIRED: Anthropic API Key (for AI features)
 ANTHROPIC_API_KEY=your_api_key_here
 
-# Default output folder
+# OPTIONAL: Default output folder (defaults to ~/resume_tailor_output)
 DEFAULT_OUTPUT_FOLDER=/path/to/output
 ```
+
+### Verification
+
+Run the environment check script to verify your setup:
+
+```bash
+python3 check_env.py
+```
+
+This will check:
+- ✓ .env file exists and is loaded correctly
+- ✓ ANTHROPIC_API_KEY is set and valid
+- ✓ All agents initialize successfully
+- ✓ Output folder configuration
 
 ## 🐛 Troubleshooting
 
@@ -203,9 +243,11 @@ DEFAULT_OUTPUT_FOLDER=/path/to/output
 - Use the manual paste option as fallback
 
 ### AI extraction not working
-- Ensure you have set the `ANTHROPIC_API_KEY` environment variable
+- Run `python3 check_env.py` to verify environment setup
+- Ensure you have set `ANTHROPIC_API_KEY` in your `.env` file
 - The app will fall back to rule-based extraction if API is unavailable
 - Check your API key is valid and has credits
+- See [ENV_SETUP_GUIDE.md](ENV_SETUP_GUIDE.md) for detailed troubleshooting
 
 ### Session state issues
 - Click "Clear All" to reset the session

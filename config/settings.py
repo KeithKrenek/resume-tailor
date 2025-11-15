@@ -2,6 +2,20 @@
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+# Find the project root (where .env should be located)
+_current_file = Path(__file__).resolve()
+_project_root = _current_file.parent.parent  # Go up two levels from config/settings.py
+_env_file = _project_root / '.env'
+
+# Load .env file if it exists
+if _env_file.exists():
+    load_dotenv(dotenv_path=_env_file)
+else:
+    # Try loading from default location (current working directory)
+    load_dotenv()
 
 # Application Settings
 APP_NAME = "Resume Tailor"
@@ -79,8 +93,16 @@ STEP_NAMES = {
 }
 
 # Default Output Folder
-DEFAULT_OUTPUT_FOLDER = str(Path.home() / "resume_tailor_output")
+# Load from environment variable or use default
+_default_folder = os.getenv('DEFAULT_OUTPUT_FOLDER', '')
+if _default_folder and Path(_default_folder).is_absolute():
+    DEFAULT_OUTPUT_FOLDER = _default_folder
+else:
+    DEFAULT_OUTPUT_FOLDER = str(Path.home() / "resume_tailor_output")
 
-# API Settings (for future use with AI agents)
+# API Settings
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
+
+# Export project root for other modules that might need it
+PROJECT_ROOT = _project_root
