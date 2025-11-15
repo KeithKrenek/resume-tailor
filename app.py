@@ -23,6 +23,7 @@ from utils.session_manager import (
 )
 from modules.input_collector import render_input_collection_page
 from modules.analysis import render_analysis_page
+from modules.optimization import render_optimization_page
 from agents.extraction_agent import extract_job_info
 
 
@@ -144,6 +145,11 @@ def step_2_analysis():
     render_analysis_page()
 
 
+def step_3_optimization():
+    """Handle Step 3: Resume Optimization."""
+    render_optimization_page()
+
+
 def main():
     """Main application entry point."""
     # Configure page
@@ -164,10 +170,12 @@ def main():
     elif current_step == 2:
         step_2_analysis()
     elif current_step == 3:
-        st.title("🚧 Step 3: Coming Soon")
-        st.info("Resume optimization will be implemented in the next iteration.")
-        if st.button("← Back to Step 2"):
-            set_current_step(2)
+        step_3_optimization()
+    elif current_step >= 4:
+        st.title("🚧 Step 4+: Coming Soon")
+        st.info("Output generation and export features will be implemented in the next iteration.")
+        if st.button("← Back to Step 3"):
+            set_current_step(3)
             st.rerun()
     else:
         st.error(f"Invalid step: {current_step}")

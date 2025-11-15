@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from enum import Enum
 import json
 
 
@@ -337,3 +338,102 @@ class GapAnalysis:
             suggestions=data.get('suggestions', []),
             analysis_timestamp=data.get('analysis_timestamp', datetime.now().isoformat())
         )
+
+# ============================================================================
+# Resume Optimization Models
+# ============================================================================
+
+class ChangeType(str, Enum):
+    """Type of resume change made during optimization."""
+    SUMMARY = "summary"
+    HEADLINE = "headline"
+    EXPERIENCE_BULLET = "experience_bullet"
+    SKILLS_SECTION = "skills_section"
+    EDUCATION = "education"
+    OTHER = "other"
+
+
+@dataclass
+class ResumeChange:
+    """Represents a single change made to a resume during optimization."""
+    id: str
+    change_type: ChangeType
+    location: str  # e.g., "experience[0].bullets[2]" or "summary"
+    before: str
+    after: str
+    rationale: str  # Short explanation for the change
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            'id': self.id,
+            'change_type': self.change_type.value if isinstance(self.change_type, ChangeType) else self.change_type,
+            'location': self.location,
+            'before': self.before,
+            'after': self.after,
+            'rationale': self.rationale
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ResumeChange':
+        """Create from dictionary."""
+        return cls(
+            id=data['id'],
+            change_type=ChangeType(data['change_type']),
+            location=data['location'],
+            before=data['before'],
+            after=data['after'],
+            rationale=data['rationale']
+        )
+
+
+@dataclass
+class ResumeOptimizationResult:
+    """Result of resume optimization process."""
+    original_resume: ResumeModel
+    optimized_resume: ResumeModel
+    changes: List[ResumeChange] = field(default_factory=list)
+    summary_of_improvements: List[str] = field(default_factory=list)
+    optimization_timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    style_used: str = "balanced"  # "conservative", "balanced", "aggressive"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            'original_resume': self.original_resume.to_dict(),
+            'optimized_resume': self.optimized_resume.to_dict(),
+            'changes': [change.to_dict() for change in self.changes],
+            'summary_of_improvements': self.summary_of_improvements,
+            'optimization_timestamp': self.optimization_timestamp,
+            'style_used': self.style_used
+        }
+    
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict(), indent=2)
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ResumeOptimizationResult':
+        """Create from dictionary."""
+        changes = [ResumeChange.from_dict(c) for c in data.get('changes', [])]
+        
+        return cls(
+            original_resume=ResumeModel.from_dict(data['original_resume']),
+            optimized_resume=ResumeModel.from_dict(data['optimized_resume']),
+            changes=changes,
+            summary_of_improvements=data.get('summary_of_improvements', []),
+            optimization_timestamp=data.get('optimization_timestamp', datetime.now().isoformat()),
+            style_used=data.get('style_used', 'balanced')
+        )
+    
+    def get_change_count_by_type(self) -> Dict[str, int]:
+        """Get count of changes by type."""
+        counts = {}
+        for change in self.changes:
+            change_type = change.change_type.value if isinstance(change.change_type, ChangeType) else change.change_type
+            counts[change_type] = counts.get(change_type, 0) + 1
+        return counts
+    
+    def get_total_changes(self) -> int:
+        """Get total number of changes."""
+        return len(self.changes)

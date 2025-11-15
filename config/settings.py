@@ -41,28 +41,41 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTM
 
 # Session State Keys
 SESSION_KEYS = {
+    # Step 1: Input Collection
     'job_description': 'job_description',
     'job_url': 'job_url',
     'company_url': 'company_url',
     'resume_text': 'resume_text',
     'resume_metadata': 'resume_metadata',
     'output_folder': 'output_folder',
-    'step_1_complete': 'step_1_complete',
-    'current_step': 'current_step',
     'company_name': 'company_name',
     'job_title': 'job_title',
-    'scraped_job_data': 'scraped_job_data'
+    'scraped_job_data': 'scraped_job_data',
+
+    # Step 2: Analysis
+    'job_model': 'job_model',
+    'resume_model': 'resume_model',
+    'gap_analysis': 'gap_analysis',
+
+    # Step 3: Optimization
+    'optimization_result': 'optimization_result',
+
+    # Step tracking
+    'step_1_complete': 'step_1_complete',
+    'step_2_complete': 'step_2_complete',
+    'step_3_complete': 'step_3_complete',
+    'current_step': 'current_step'
 }
 
 # UI Settings
 TOTAL_STEPS = 6
 STEP_NAMES = {
     1: "Input Collection",
-    2: "Job Analysis",
-    3: "Resume Analysis",
-    4: "Gap Identification",
-    5: "Resume Optimization",
-    6: "Output Generation"
+    2: "Job & Resume Analysis",
+    3: "Resume Optimization",
+    4: "Output Generation",
+    5: "Review & Export",
+    6: "Complete"
 }
 
 # Default Output Folder

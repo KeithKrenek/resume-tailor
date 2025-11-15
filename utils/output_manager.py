@@ -296,3 +296,49 @@ Relevant Experience:   {gap.relevant_experience_count} positions
             return True, gap, ""
         except Exception as e:
             return False, None, f"Error loading gap analysis: {str(e)}"
+
+    def save_optimization_result(
+        self,
+        result,  # ResumeOptimizationResult
+        filename: str = "optimization_result.json"
+    ) -> Tuple[bool, str]:
+        """
+        Save ResumeOptimizationResult to JSON file.
+
+        Args:
+            result: ResumeOptimizationResult to save
+            filename: Output filename
+
+        Returns:
+            Tuple of (success, file_path or error_message)
+        """
+        try:
+            file_path = self.output_folder / filename
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(result.to_json())
+            return True, str(file_path)
+        except Exception as e:
+            return False, f"Error saving optimization result: {str(e)}"
+
+    def load_optimization_result(
+        self,
+        filename: str = "optimization_result.json"
+    ) -> Tuple[bool, Optional[any], str]:
+        """
+        Load ResumeOptimizationResult from JSON file.
+
+        Args:
+            filename: Input filename
+
+        Returns:
+            Tuple of (success, ResumeOptimizationResult or None, error_message)
+        """
+        try:
+            from modules.models import ResumeOptimizationResult
+            file_path = self.output_folder / filename
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            result = ResumeOptimizationResult.from_dict(data)
+            return True, result, ""
+        except Exception as e:
+            return False, None, f"Error loading optimization result: {str(e)}"
