@@ -271,6 +271,135 @@ def render_summary_metrics(result: ResumeOptimizationResult, gap_before=None, ga
                     st.markdown(f"- {rec}")
 
 
+def render_metrics_dashboard(result: ResumeOptimizationResult):
+    """Render quality metrics dashboard."""
+    if not result.metrics:
+        return
+
+    st.markdown("### 📊 Quality Metrics")
+    metrics_data = result.metrics
+
+    # Overall status
+    overall_passed = metrics_data.get('overall_passed', False)
+    overall_score = metrics_data.get('overall_score', 0.0)
+
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if overall_passed:
+            st.success(f"✅ **PASSED**\n\nOverall Score: {overall_score:.1%}")
+        else:
+            st.error(f"❌ **NEEDS IMPROVEMENT**\n\nOverall Score: {overall_score:.1%}")
+
+    with col2:
+        failed_metrics = metrics_data.get('failed_metrics', [])
+        if failed_metrics:
+            st.warning(f"**Failed Metrics:** {', '.join(failed_metrics)}")
+        else:
+            st.success("**All metrics passed!** Resume meets quality standards.")
+
+    st.markdown("---")
+
+    # Individual metrics cards
+    col1, col2, col3, col4 = st.columns(4)
+
+    metrics_list = [
+        ('authenticity', col1, "🔍 Authenticity"),
+        ('role_alignment', col2, "🎯 Role Alignment"),
+        ('ats_optimization', col3, "🤖 ATS Optimization"),
+        ('length_compliance', col4, "📏 Length")
+    ]
+
+    for metric_key, col, label in metrics_list:
+        metric = metrics_data.get(metric_key, {})
+        if not metric:
+            continue
+
+        with col:
+            score = metric.get('score', 0.0)
+            passed = metric.get('passed', False)
+            threshold = metric.get('threshold', 0.0)
+
+            # Determine color based on pass/fail
+            if passed:
+                st.metric(
+                    label=label,
+                    value=f"{score:.1%}",
+                    delta=f"Target: {threshold:.0%}",
+                    delta_color="normal"
+                )
+            else:
+                st.metric(
+                    label=label,
+                    value=f"{score:.1%}",
+                    delta=f"Target: {threshold:.0%}",
+                    delta_color="inverse"
+                )
+
+    # Detailed breakdowns (collapsible)
+    with st.expander("📋 Detailed Metrics Breakdown", expanded=False):
+        for metric_key, metric_name in [
+            ('authenticity', '🔍 Authenticity'),
+            ('role_alignment', '🎯 Role Alignment'),
+            ('ats_optimization', '🤖 ATS Optimization'),
+            ('length_compliance', '📏 Length Compliance')
+        ]:
+            metric = metrics_data.get(metric_key, {})
+            if not metric:
+                continue
+
+            st.markdown(f"#### {metric_name}")
+
+            # Score and status
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"**Score:** {metric.get('score', 0.0):.2%}")
+            with col2:
+                st.markdown(f"**Threshold:** {metric.get('threshold', 0.0):.2%}")
+            with col3:
+                status = "✅ PASS" if metric.get('passed', False) else "❌ FAIL"
+                st.markdown(f"**Status:** {status}")
+
+            # Details
+            details = metric.get('details', {})
+            if details:
+                st.markdown("**Details:**")
+                for key, value in details.items():
+                    if isinstance(value, (list, dict)):
+                        # Skip complex structures in summary
+                        continue
+                    elif isinstance(value, float):
+                        st.markdown(f"- {key.replace('_', ' ').title()}: {value:.2f}")
+                    elif isinstance(value, bool):
+                        st.markdown(f"- {key.replace('_', ' ').title()}: {'Yes' if value else 'No'}")
+                    else:
+                        st.markdown(f"- {key.replace('_', ' ').title()}: {value}")
+
+            # Recommendations
+            recommendations = metric.get('recommendations', [])
+            if recommendations:
+                st.markdown("**Recommendations:**")
+                for rec in recommendations:
+                    st.markdown(f"- {rec}")
+
+            st.markdown("---")
+
+    # Overall recommendations
+    overall_recommendations = metrics_data.get('recommendations', [])
+    if overall_recommendations:
+        with st.expander("💡 Overall Recommendations", expanded=not overall_passed):
+            for i, rec in enumerate(overall_recommendations, 1):
+                if rec.startswith('🔴'):
+                    st.error(rec)
+                elif rec.startswith('🟡'):
+                    st.warning(rec)
+                elif rec.startswith('🟢'):
+                    st.info(rec)
+                elif rec.startswith('✅'):
+                    st.success(rec)
+                else:
+                    st.markdown(f"{i}. {rec}")
+
+
 def render_improvements_list(result: ResumeOptimizationResult):
     """Render list of high-level improvements."""
     if result.summary_of_improvements:
@@ -544,6 +673,11 @@ def render_optimization_page() -> bool:
 
     # Summary metrics with before/after comparison
     render_summary_metrics(result, gap_before=gap_analysis, gap_after=gap_after)
+
+    st.markdown("---")
+
+    # Quality metrics dashboard
+    render_metrics_dashboard(result)
 
     st.markdown("---")
 
