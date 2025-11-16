@@ -11,6 +11,46 @@ from utils.logging_config import get_logger
 logger = get_logger(__name__)
 
 
+def run_iterative_optimization(
+    job: JobModel,
+    resume: ResumeModel,
+    gap: GapAnalysis,
+    style: str = "balanced",
+    config: Optional['OptimizationConfig'] = None,
+    api_key: Optional[str] = None
+) -> 'IterativeOptimizationResult':
+    """
+    Run iterative optimization with multiple passes.
+
+    Args:
+        job: Job model
+        resume: Original resume model
+        gap: Gap analysis
+        style: Optimization style (conservative, balanced, aggressive)
+        config: Optimization configuration (tier)
+        api_key: API key for optimization
+
+    Returns:
+        IterativeOptimizationResult with best version and all iterations
+    """
+    from services.iterative_optimizer import IterativeOptimizer
+    from config.optimization_config import OptimizationTier
+
+    # Use provided config or default to STANDARD
+    if config is None:
+        config = OptimizationTier.STANDARD
+
+    optimizer = IterativeOptimizer(config)
+    result = optimizer.optimize(
+        job=job,
+        resume=resume,
+        gap=gap,
+        style=style,
+        api_key=api_key
+    )
+    return result
+
+
 def run_optimization(
     job: JobModel,
     resume: ResumeModel,

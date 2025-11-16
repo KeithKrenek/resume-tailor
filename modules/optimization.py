@@ -106,18 +106,63 @@ def perform_optimization(
     return result, errors
 
 
-def render_optimization_controls() -> tuple[str, bool]:
+def render_optimization_controls() -> tuple[str, str, bool]:
     """
     Render optimization control panel.
 
     Returns:
-        Tuple of (style, run_optimization)
+        Tuple of (tier, style, run_optimization)
     """
+    from config.optimization_config import OptimizationTier
+
     st.markdown("### ⚙️ Optimization Settings")
 
+    # Tier selection
+    st.markdown("#### 📊 Optimization Tier")
+
+    tier_choice = st.radio(
+        "Choose optimization tier",
+        options=[
+            "Basic - Fast & Affordable ($0.50, ~2 min, 1 iteration)",
+            "Standard - Balanced Quality ($2.00, ~8 min, up to 3 iterations) ⭐ Recommended",
+            "Premium - Maximum Quality ($5.00, ~20 min, up to 5 iterations)"
+        ],
+        index=1,  # Default to Standard
+        help="""
+        - **Basic**: Single-pass optimization, essential metrics only
+        - **Standard**: Multi-pass refinement with full metrics tracking
+        - **Premium**: Maximum iterations with version history and convergence detection
+        """
+    )
+
+    # Parse tier choice
+    if "Basic" in tier_choice:
+        tier = "basic"
+    elif "Premium" in tier_choice:
+        tier = "premium"
+    else:
+        tier = "standard"
+
+    # Get tier config
+    config = OptimizationTier.get_tier(tier)
+
+    # Show what's included
+    with st.expander("📋 What's included in this tier?"):
+        st.write(f"**Max Iterations:** {config.max_iterations}")
+        st.write(f"**Convergence Threshold:** {config.convergence_threshold:.0%}")
+        st.write(f"**Metrics Tracked:** {', '.join(config.metrics_to_calculate)}")
+        st.write(f"**Output Formats:** {', '.join(config.output_formats)}")
+        st.write(f"**Version History:** {'✓' if config.enable_version_history else '✗'}")
+        st.write(f"**Estimated Time:** ~{config.estimated_time_seconds // 60} minutes")
+        st.write(f"**Estimated Cost:** ~${config.estimated_cost_usd:.2f}")
+
+    st.markdown("---")
+
     # Style selector
+    st.markdown("#### 🎨 Optimization Style")
+
     style = st.selectbox(
-        "Optimization Style",
+        "Choose style",
         options=["conservative", "balanced", "aggressive"],
         index=1,  # Default to "balanced"
         help="""
@@ -142,7 +187,7 @@ def render_optimization_controls() -> tuple[str, bool]:
         use_container_width=True
     )
 
-    return style, run_optimization
+    return tier, style, run_optimization
 
 
 def render_summary_metrics(result: ResumeOptimizationResult, gap_before=None, gap_after=None):
@@ -400,6 +445,149 @@ def render_metrics_dashboard(result: ResumeOptimizationResult):
                     st.markdown(f"{i}. {rec}")
 
 
+def render_version_history(iterative_result):
+    """Render version history from iterative optimization."""
+    if not iterative_result or not hasattr(iterative_result, 'all_versions'):
+        return
+
+    all_versions = iterative_result.all_versions
+    if not all_versions or len(all_versions) <= 1:
+        return
+
+    st.markdown("### 📚 Version History")
+
+    # Check if version history is enabled
+    tier = st.session_state.get('optimization_tier', 'standard')
+    from config.optimization_config import OptimizationTier
+    config = OptimizationTier.get_tier(tier)
+
+    if not config.enable_version_history:
+        st.info("💡 Version history is available in Standard and Premium tiers")
+        return
+
+    st.info(f"📊 {len(all_versions)} iteration(s) completed")
+
+    # Version selector
+    version_options = [
+        f"Version {v.version_number} (Iteration {v.iteration_number}) - Score: {v.get_overall_score():.1%}"
+        for v in all_versions
+    ]
+
+    selected_version_idx = st.selectbox(
+        "View different versions",
+        options=range(len(all_versions)),
+        format_func=lambda i: version_options[i],
+        index=len(all_versions) - 1  # Default to latest
+    )
+
+    selected_version = all_versions[selected_version_idx]
+
+    # Show version details
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Overall Score", f"{selected_version.get_overall_score():.1%}")
+    with col2:
+        st.metric("Iteration", selected_version.iteration_number)
+    with col3:
+        st.metric("Version", selected_version.version_number)
+    with col4:
+        st.metric("Timestamp", selected_version.timestamp.strftime("%H:%M:%S"))
+
+    # Show metrics for this version
+    if selected_version.metrics:
+        st.markdown("**Metrics for this version:**")
+        metrics_cols = st.columns(4)
+
+        metrics_data = selected_version.metrics
+
+        with metrics_cols[0]:
+            auth_metric = metrics_data.get('authenticity', {})
+            if isinstance(auth_metric, dict):
+                score = auth_metric.get('score', 0.0)
+                passed = auth_metric.get('passed', False)
+                st.metric("🔍 Authenticity", f"{score:.1%}", delta="PASS" if passed else "FAIL")
+
+        with metrics_cols[1]:
+            role_metric = metrics_data.get('role_alignment', {})
+            if isinstance(role_metric, dict):
+                score = role_metric.get('score', 0.0)
+                passed = role_metric.get('passed', False)
+                st.metric("🎯 Role Align", f"{score:.1%}", delta="PASS" if passed else "FAIL")
+
+        with metrics_cols[2]:
+            ats_metric = metrics_data.get('ats_optimization', {})
+            if isinstance(ats_metric, dict):
+                score = ats_metric.get('score', 0.0)
+                passed = ats_metric.get('passed', False)
+                st.metric("🤖 ATS", f"{score:.1%}", delta="PASS" if passed else "FAIL")
+
+        with metrics_cols[3]:
+            length_metric = metrics_data.get('length_compliance', {})
+            if isinstance(length_metric, dict):
+                score = length_metric.get('score', 0.0)
+                passed = length_metric.get('passed', False)
+                st.metric("📏 Length", f"{score:.1%}", delta="PASS" if passed else "FAIL")
+
+    # Compare with best version
+    best_version = iterative_result.best_version
+    if selected_version.version_number != best_version.version_number:
+        st.markdown("---")
+        st.markdown(f"**Comparison with best version (Version {best_version.version_number}):**")
+
+        comp_cols = st.columns(4)
+
+        if selected_version.metrics and best_version.metrics:
+            # Helper function to get metric score
+            def get_metric_score(metrics, metric_name):
+                metric = metrics.get(metric_name, {})
+                if isinstance(metric, dict):
+                    return metric.get('score', 0.0)
+                return 0.0
+
+            with comp_cols[0]:
+                delta = get_metric_score(selected_version.metrics, 'authenticity') - get_metric_score(best_version.metrics, 'authenticity')
+                st.metric("Authenticity Δ", f"{delta:+.1%}")
+
+            with comp_cols[1]:
+                delta = get_metric_score(selected_version.metrics, 'role_alignment') - get_metric_score(best_version.metrics, 'role_alignment')
+                st.metric("Role Alignment Δ", f"{delta:+.1%}")
+
+            with comp_cols[2]:
+                delta = get_metric_score(selected_version.metrics, 'ats_optimization') - get_metric_score(best_version.metrics, 'ats_optimization')
+                st.metric("ATS Δ", f"{delta:+.1%}")
+
+            with comp_cols[3]:
+                delta = get_metric_score(selected_version.metrics, 'length_compliance') - get_metric_score(best_version.metrics, 'length_compliance')
+                st.metric("Length Δ", f"{delta:+.1%}")
+
+    # Button to use this version
+    if selected_version.version_number != iterative_result.best_version.version_number:
+        if st.button(f"📌 Use Version {selected_version.version_number} Instead"):
+            # Update the optimization result to use this version
+            st.session_state.optimization_result.optimized_resume = selected_version.optimized_resume
+            st.session_state.optimization_result.metrics = selected_version.metrics
+            st.session_state.optimization_result.changes = selected_version.changes
+            st.success(f"✓ Switched to Version {selected_version.version_number}")
+            st.rerun()
+
+    # Show improvement trajectory
+    with st.expander("📈 Improvement Trajectory"):
+        import pandas as pd
+
+        trajectory_data = []
+        for v in all_versions:
+            trajectory_data.append({
+                'Iteration': v.iteration_number,
+                'Version': v.version_number,
+                'Overall Score': f"{v.get_overall_score():.1%}",
+                'Timestamp': v.timestamp.strftime("%H:%M:%S")
+            })
+
+        df = pd.DataFrame(trajectory_data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+
+
 def render_improvements_list(result: ResumeOptimizationResult):
     """Render list of high-level improvements."""
     if result.summary_of_improvements:
@@ -632,7 +820,7 @@ def render_optimization_page() -> bool:
         col1, col2 = st.columns([1, 2])
 
         with col1:
-            style, run_optimization = render_optimization_controls()
+            tier, style, run_optimization = render_optimization_controls()
 
         with col2:
             st.markdown("### 📊 Current Gap Analysis")
@@ -646,17 +834,56 @@ def render_optimization_page() -> bool:
 
         # Run optimization
         st.markdown("---")
-        result, errors = perform_optimization(job_model, resume_model, gap_analysis, style)
 
-        if errors or not result:
-            st.error("❌ Optimization failed. Please check errors and try again.")
-            if st.button("← Back to Step 2"):
-                set_current_step(2)
-                st.rerun()
-            return False
+        # Get tier configuration
+        from config.optimization_config import OptimizationTier
+        from services.optimization_service import run_iterative_optimization
 
-        # Store in session
+        tier_config = OptimizationTier.get_tier(tier)
+
+        # Show progress
+        with st.status(f"✨ Optimizing resume using {tier.title()} tier...", expanded=True) as status:
+            st.write(f"Using {style} optimization style...")
+            st.write(f"Maximum iterations: {tier_config.max_iterations}")
+
+            try:
+                # Run iterative optimization
+                iterative_result = run_iterative_optimization(
+                    job=job_model,
+                    resume=resume_model,
+                    gap=gap_analysis,
+                    style=style,
+                    config=tier_config
+                )
+
+                result = iterative_result.final_result
+
+                st.write(f"✅ Optimization complete!")
+                st.write(f"Iterations run: {iterative_result.iterations_run}")
+                st.write(f"Convergence: {iterative_result.convergence_reason}")
+                st.write(f"Time: {iterative_result.total_time_seconds:.1f}s")
+
+                status.update(label="✅ Resume optimized", state="complete")
+
+            except Exception as e:
+                st.error(f"❌ Optimization failed: {str(e)}")
+                status.update(label="❌ Optimization failed", state="error")
+                if st.button("← Back to Step 2"):
+                    set_current_step(2)
+                    st.rerun()
+                return False
+
+        # Store results in session
         st.session_state['optimization_result'] = result
+        st.session_state['iterative_result'] = iterative_result
+        st.session_state['optimization_tier'] = tier
+
+        # Show convergence info
+        if iterative_result.converged:
+            st.success(f"🎯 **Converged**: {iterative_result.convergence_reason}")
+        else:
+            st.info(f"📊 **Stopped**: {iterative_result.convergence_reason}")
+
         st.balloons()
         st.success("✅ Optimization complete!")
 
@@ -680,6 +907,12 @@ def render_optimization_page() -> bool:
     render_metrics_dashboard(result)
 
     st.markdown("---")
+
+    # Version history (if available)
+    iterative_result = st.session_state.get('iterative_result')
+    if iterative_result:
+        render_version_history(iterative_result)
+        st.markdown("---")
 
     # High-level improvements
     render_improvements_list(result)
