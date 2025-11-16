@@ -5,6 +5,130 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2025-01-16
+
+### Added
+
+#### ATS Simulation & Testing (HIGH)
+- **Complete ATS simulation** - Test how ATS systems will parse your resume
+  - AI-powered parsing simulation using Claude Sonnet 4
+  - Detailed analysis across 6 key categories
+  - Overall score (0-100) and letter grade
+  - Pass/fail determination for ATS compatibility
+  - Visual score breakdowns with color coding
+
+- **Comprehensive Analysis Categories**:
+  - Parsing Quality (0-100) - Structure and organization
+  - Contact Extraction (0-100) - Ease of finding contact info
+  - Section Identification (0-100) - Clarity of section headers
+  - Keyword Density (0-100) - Relevant keyword presence
+  - Format Compatibility (0-100) - ATS-friendly formatting
+  - Experience Parsing (0-100) - Work history extractability
+
+- **Keyword Matching Analysis**:
+  - Compare resume keywords against job description
+  - Match rate percentage and grade
+  - List of matched keywords (found in both)
+  - List of missing keywords (in job, not in resume)
+  - Actionable recommendations to add missing keywords
+
+- **Issue Detection & Recommendations**:
+  - Critical issues that prevent ATS parsing
+  - Warnings for reduced effectiveness
+  - Specific, actionable recommendations
+  - Priority-ordered fixes
+  - Before-submit validation
+
+- **Data Extraction Verification**:
+  - Show what ATS extracted from resume:
+    - Name, email, phone, location
+    - Sections found (Experience, Education, Skills, etc.)
+    - Years of experience calculated
+    - Education level detected
+  - Verify accuracy of extracted data
+  - Identify missing or misread information
+
+- **ATS View**:
+  - See simplified text view of resume
+  - Understand how ATS "sees" formatting
+  - Identify parsing issues visually
+
+- **Seamless Integration**:
+  - New "ATS Test" tab in Step 4
+  - One-click testing with instant results
+  - Works with edited, final, or optimized resume
+  - Test results cached for quick re-review
+
+#### New Services & Agents
+- **ATS Simulation Agent** (`agents/ats_simulation_agent.py`):
+  - simulate_ats_parsing() - AI-powered ATS simulation
+  - analyze_keyword_matching() - Keyword analysis
+  - extract_keywords() - Smart keyword extraction
+  - extract_phrases() - Multi-word technical phrases
+  - check_format_issues() - Format problem detection
+  - Maintains database of common technical keywords
+
+#### UI Components
+- **ATS Tester Module** (`modules/ats_tester.py`):
+  - render_ats_tester() - Main testing interface
+  - render_ats_results() - Comprehensive results display
+  - render_overall_score() - Score visualization
+  - render_category_scores() - Category breakdowns
+  - render_keyword_analysis() - Keyword matching display
+  - render_issues_and_recommendations() - Action items
+  - render_extracted_data() - Verification display
+  - render_ats_view() - Simplified text view
+  - Color-coded visualizations for quick understanding
+
+### Enhanced
+
+#### Workflow Integration
+- Added fifth tab "ATS Test" in Step 4
+- Tab order: Export, Edit, ATS Test, Version History, Compare
+- Instant testing with one click
+- Results persist across session
+- Re-test after edits to verify improvements
+
+#### User Experience
+- Know before you submit how ATS will handle resume
+- Identify and fix issues proactively
+- Increase chances of getting past ATS screening
+- Data-driven confidence in resume formatting
+- Visual feedback on compatibility
+
+### Technical Details
+
+**Files Added:**
+- `agents/ats_simulation_agent.py` - ATS simulation logic and keyword analysis
+- `modules/ats_tester.py` - ATS testing UI and visualization
+
+**Files Modified:**
+- `modules/output.py` - Add ATS Test tab to Step 4
+
+**Features:**
+- AI-powered parsing simulation
+- Keyword extraction and matching
+- Multi-category scoring (6 categories)
+- Visual score representation
+- Color-coded feedback
+- Issue detection and prioritization
+- Actionable recommendations
+- Data extraction verification
+
+**Impact:**
+- ✅ Test ATS compatibility before submission
+- ✅ Identify and fix parsing issues proactively
+- ✅ Maximize keyword matching with job description
+- ✅ Verify ATS can extract all important data
+- ✅ Increase chances of passing ATS screening
+- ✅ Data-driven confidence in resume quality
+- ✅ Avoid common ATS pitfalls
+
+**Backward Compatibility:**
+- All changes maintain backward compatibility
+- ATS testing is optional feature
+- Doesn't affect normal workflow
+
 ## [2.4.0] - 2025-01-16
 
 ### Added

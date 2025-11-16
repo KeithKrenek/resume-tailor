@@ -8,9 +8,16 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![Anthropic](https://img.shields.io/badge/anthropic-claude-purple.svg)](https://www.anthropic.com/)
 
-## 🆕 Latest Enhancements (v2.4.0)
+## 🆕 Latest Enhancements (v2.5.0)
 
 ### What's New
+- 🤖 **ATS Simulation & Testing** (HIGH) - Test how ATS systems will parse your resume
+  - AI-powered parsing simulation with 6-category analysis
+  - Overall score (0-100) and letter grade
+  - Keyword matching analysis against job description
+  - Critical issues, warnings, and actionable recommendations
+  - Data extraction verification (what ATS "sees")
+  - One-click testing before submission
 - ✏️ **Smart Resume Editor with Inline Optimization** (HIGH) - Fine-tune any section with AI assistance
   - Click-to-edit interface for all resume sections
   - "Improve This" button for AI-powered enhancements
@@ -129,6 +136,21 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
   - Edit history with undo capability
   - Reset to optimized version
   - Context-aware AI improvements
+
+- **ATS Simulation & Testing** 🤖
+  - One-click ATS compatibility testing
+  - Overall score (0-100) and letter grade
+  - 6-category detailed analysis:
+    - Parsing Quality, Contact Extraction
+    - Section Identification, Keyword Density
+    - Format Compatibility, Experience Parsing
+  - Keyword matching against job description
+  - Match rate percentage with matched/missing keywords
+  - Critical issues and warnings identification
+  - Actionable recommendations for improvements
+  - Data extraction verification
+  - See what ATS "sees" (simplified view)
+  - Test before submission to maximize success
 
 - **Version Management** 📚
   - Save versions with automatic numbering

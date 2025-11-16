@@ -38,7 +38,13 @@ def render_output_generation_page():
     st.title("📄 Step 4: Output Generation")
 
     # Tabs for different views
-    tab1, tab2, tab3, tab4 = st.tabs(["📥 Export Resume", "✏️ Edit Resume", "📚 Version History", "🔄 Compare Versions"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📥 Export Resume",
+        "✏️ Edit Resume",
+        "🤖 ATS Test",
+        "📚 Version History",
+        "🔄 Compare Versions"
+    ])
 
     with tab1:
         render_export_tab()
@@ -47,9 +53,12 @@ def render_output_generation_page():
         render_editor_tab()
 
     with tab3:
-        render_version_history_tab()
+        render_ats_test_tab()
 
     with tab4:
+        render_version_history_tab()
+
+    with tab5:
         render_version_comparison_tab()
 
 
@@ -430,6 +439,13 @@ def render_editor_tab():
     from modules.resume_editor import render_resume_editor
 
     render_resume_editor()
+
+
+def render_ats_test_tab():
+    """Render the ATS testing tab."""
+    from modules.ats_tester import render_ats_tester
+
+    render_ats_tester()
 
 
 def render_version_history_tab():
