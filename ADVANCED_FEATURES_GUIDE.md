@@ -1,8 +1,10 @@
-# 🚀 Advanced Features Guide (v2.1)
+# 🚀 Advanced Features Guide (v2.1.1)
 
 ## Overview
 
-This guide covers the advanced features added in v2.1 that provide professional-grade resume optimization capabilities.
+This guide covers the advanced features in Resume Tailor v2.1.1 that provide professional-grade resume optimization capabilities.
+
+**Latest Update (v2.1.1):** Critical bug fixes including workflow progression, type safety improvements, and configuration consistency. See [CHANGELOG.md](CHANGELOG.md) for details.
 
 ---
 
@@ -930,7 +932,7 @@ optimize(resume, job, profile=profile, template=template)
 2. Review changes (pay attention to keyword additions)
 3. Verify ATS compatibility improved
 
-#### Step 5: Validate Results
+#### Post-Optimization: Validate Results
 1. Re-run ATS test → Should be 90%+
 2. Re-run keyword analysis → Should be 80%+
 3. Check warnings → Should have 0 critical

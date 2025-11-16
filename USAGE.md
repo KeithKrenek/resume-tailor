@@ -129,10 +129,10 @@ The app will open in your browser at `http://localhost:8501`
 ```
 1. Paste job in target industry
 2. Upload current resume
-3. Review gap analysis (Step 4)
+3. Review gap analysis (Step 2)
 4. Identify missing skills
-5. Optimize resume with new focus
-6. Generate cover letter addressing transition
+5. Optimize resume with new focus (Step 3)
+6. Generate tailored version (Step 4)
 ```
 
 **Time:** ~10-15 minutes
@@ -280,30 +280,26 @@ Upload a markdown resume with proper formatting:
 
 After completing Step 1, the app will:
 
-1. **Step 2:** Analyze the job description
-   - Extract key requirements
-   - Identify important skills
-   - Categorize qualifications
+1. **Step 2: Analysis**
+   - Extract job requirements and skills
+   - Parse your resume structure
+   - Perform gap analysis
+   - Calculate coverage percentage
+   - Provide detailed metrics and recommendations
 
-2. **Step 3:** Analyze your resume
-   - Extract your experience
-   - Map your skills
-   - Identify achievements
+2. **Step 3: Optimization**
+   - Choose optimization style (Conservative/Balanced/Aggressive)
+   - AI-powered resume rewriting
+   - Keyword optimization for ATS
+   - Track all changes with rationales
+   - Authenticity verification (Hallucination Guard)
 
-3. **Step 4:** Identify gaps
-   - Compare job vs. resume
-   - Highlight missing elements
-   - Suggest improvements
-
-4. **Step 5:** Optimize resume
-   - AI-powered rewriting
-   - Keyword optimization
-   - ATS-friendly formatting
-
-5. **Step 6:** Generate outputs
-   - Tailored resume
-   - Cover letter
-   - Application checklist
+3. **Step 4: Output Generation**
+   - Preview optimized resume
+   - Download in multiple formats (PDF, DOCX, HTML, Markdown)
+   - Save to output folder
+   - Review authenticity report
+   - Start new resume or go back to edit
 
 ---
 
