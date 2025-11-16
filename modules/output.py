@@ -38,15 +38,18 @@ def render_output_generation_page():
     st.title("📄 Step 4: Output Generation")
 
     # Tabs for different views
-    tab1, tab2, tab3 = st.tabs(["📥 Export Resume", "📚 Version History", "🔄 Compare Versions"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📥 Export Resume", "✏️ Edit Resume", "📚 Version History", "🔄 Compare Versions"])
 
     with tab1:
         render_export_tab()
 
     with tab2:
-        render_version_history_tab()
+        render_editor_tab()
 
     with tab3:
+        render_version_history_tab()
+
+    with tab4:
         render_version_comparison_tab()
 
 
@@ -420,6 +423,13 @@ def render_save_version_section():
         # Clear the dialog flag
         st.session_state['show_save_version_dialog'] = False
         st.rerun()
+
+
+def render_editor_tab():
+    """Render the resume editor tab."""
+    from modules.resume_editor import render_resume_editor
+
+    render_resume_editor()
 
 
 def render_version_history_tab():

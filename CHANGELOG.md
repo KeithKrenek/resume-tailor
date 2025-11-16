@@ -5,6 +5,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-01-16
+
+### Added
+
+#### Smart Resume Editor with Inline Optimization (HIGH)
+- **Interactive inline editing** - Edit any resume section with AI assistance
+  - Click-to-edit interface for all resume sections
+  - Manual text editing with live updates
+  - AI-powered "Improve This" button for each section
+  - "Get Suggestions" for actionable improvement tips
+  - Real-time preview of changes
+  - Edit history tracking with undo capability
+
+- **Section-Level AI Improvements**:
+  - Improve professional summary - enhance impact and clarity
+  - Improve headline - optimize for role and keywords
+  - Improve experience bullets - add metrics, strengthen verbs
+  - Improve skills section - organize and prioritize
+  - Context-aware improvements using job description
+  - Focused improvements (no full re-optimization needed)
+
+- **AI Assistance Features**:
+  - Smart prompts tailored to section type
+  - Rationale provided for each AI improvement
+  - Suggestions without rewriting (guidance mode)
+  - Maintains truthfulness - no fabrication
+  - Preserves existing facts and achievements
+  - Professional resume writing best practices
+
+- **User Control**:
+  - Manual editing always available
+  - Save, Revert, or Cancel for each section
+  - Edit history panel showing all changes
+  - Undo last edit capability
+  - Reset to optimized version option
+  - Clear edit history
+
+- **Seamless Integration**:
+  - New "Edit Resume" tab in Step 4
+  - Works with optimized or final resume
+  - Changes persist across session
+  - Export edited version in all formats
+
+#### New Services & Agents
+- **Section Improvement Agent** (`agents/section_improvement_agent.py`):
+  - improve_section() - AI-powered section improvements
+  - suggest_improvements() - Get actionable suggestions
+  - Context-aware prompts by section type
+  - Maintains truthfulness and authenticity
+  - Uses Claude Sonnet 4 for high-quality improvements
+
+#### UI Components
+- **Resume Editor Module** (`modules/resume_editor.py`):
+  - render_resume_editor() - Main editor interface
+  - render_editable_summary() - Edit professional summary
+  - render_editable_headline() - Edit headline
+  - render_editable_experience() - Edit experience bullets
+  - render_editable_skills() - Edit skills list
+  - render_edit_interface() - Unified edit UI with AI assistance
+  - render_edit_history() - Track and display changes
+  - render_editor_actions() - Save/reset/clear actions
+
+### Enhanced
+
+#### Workflow Integration
+- Added fourth tab "Edit Resume" in Step 4
+- Tab order: Export, Edit, Version History, Compare
+- Live editing with immediate visual feedback
+- Edit history persistence across session
+
+#### User Experience
+- Fine-tune resume without full re-optimization
+- Iterate quickly on specific sections
+- Get AI assistance for individual improvements
+- Maintain full control with manual editing
+- See before/after for each change
+
+### Technical Details
+
+**Files Added:**
+- `agents/section_improvement_agent.py` - AI agent for section improvements
+- `modules/resume_editor.py` - Interactive editor UI
+
+**Files Modified:**
+- `modules/output.py` - Add editor tab to Step 4
+
+**Features:**
+- Click-to-edit inline interface
+- AI improvement with rationale
+- AI suggestions without rewriting
+- Edit history with undo
+- Session persistence
+- Full export integration
+
+**Impact:**
+- ✅ Fine-tune resume without full re-optimization
+- ✅ Iterate quickly on specific sections
+- ✅ Get targeted AI assistance
+- ✅ Maintain control with manual editing
+- ✅ Track all changes with edit history
+- ✅ Faster workflow for minor tweaks
+
+**Backward Compatibility:**
+- All changes maintain backward compatibility
+- Editor is optional (doesn't affect normal workflow)
+- Works with existing resumes
+
 ## [2.3.0] - 2025-01-16
 
 ### Added
