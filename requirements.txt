@@ -24,6 +24,11 @@ python-dotenv>=1.0.0
 # AI/ML (for agent integration)
 anthropic>=0.18.0
 
+# Multi-Model Support (Optional)
+# Uncomment to enable additional AI providers:
+# openai>=1.0.0  # For GPT-4, GPT-3.5 support
+# google-generativeai>=0.3.0  # For Gemini support
+
 # Data Processing
 jsonschema>=4.20.0
 pandas>=2.0.0

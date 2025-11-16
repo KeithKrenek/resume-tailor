@@ -373,6 +373,278 @@ def render_analysis_page() -> bool:
 
     st.markdown("---")
 
+    # Resume Score Dashboard
+    try:
+        from modules.resume_scorer import score_resume
+        resume_score = score_resume(resume_model, job_model)
+
+        st.markdown("### 📊 Resume Quality Score")
+
+        # Overall score with grade
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            score_color = "🟢" if resume_score.overall_score >= 85 else "🟡" if resume_score.overall_score >= 70 else "🔴"
+            st.metric(
+                "Overall Score",
+                f"{resume_score.overall_score:.0f}/100",
+                delta=f"Grade: {resume_score.grade}"
+            )
+        with col2:
+            st.metric(
+                "ATS Score",
+                f"{resume_score.ats_score.score:.0f}/100",
+                delta="Compatibility"
+            )
+        with col3:
+            st.metric(
+                "Keyword Match",
+                f"{resume_score.keyword_match.score:.0f}/100" if job_model else "N/A",
+                delta="Job Alignment"
+            )
+        with col4:
+            st.metric(
+                "Impact",
+                f"{resume_score.impact_score.score:.0f}/100",
+                delta="Achievement Focus"
+            )
+
+        # Status message
+        if resume_score.overall_score >= 85:
+            st.success(f"✅ {resume_score.status}")
+        elif resume_score.overall_score >= 70:
+            st.info(f"ℹ️ {resume_score.status}")
+        else:
+            st.warning(f"⚠️ {resume_score.status}")
+
+        # Detailed score breakdown
+        with st.expander("📈 Detailed Score Breakdown", expanded=False):
+            scores = [
+                ("ATS Compatibility", resume_score.ats_score),
+                ("Keyword Match", resume_score.keyword_match),
+                ("Length", resume_score.length_score),
+                ("Readability", resume_score.readability_score),
+                ("Impact", resume_score.impact_score),
+                ("Completeness", resume_score.completeness_score)
+            ]
+
+            for label, score_component in scores:
+                st.markdown(f"**{label}:** {score_component.score:.0f}/100")
+                if score_component.details:
+                    st.caption(score_component.details)
+                if score_component.recommendations:
+                    for rec in score_component.recommendations:
+                        st.caption(f"  → {rec}")
+                st.markdown("")
+
+    except Exception as e:
+        st.warning(f"Could not calculate resume score: {e}")
+
+    st.markdown("---")
+
+    # Resume Warnings
+    try:
+        from modules.resume_warnings import detect_resume_warnings, WarningSeverity
+
+        warnings = detect_resume_warnings(resume_model)
+
+        if warnings:
+            st.markdown("### ⚠️ Resume Warnings & Recommendations")
+
+            # Count by severity
+            critical_count = sum(1 for w in warnings if w.severity == WarningSeverity.CRITICAL)
+            high_count = sum(1 for w in warnings if w.severity == WarningSeverity.HIGH)
+            medium_count = sum(1 for w in warnings if w.severity == WarningSeverity.MEDIUM)
+            low_count = sum(1 for w in warnings if w.severity == WarningSeverity.LOW)
+
+            # Summary
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                if critical_count > 0:
+                    st.metric("Critical Issues", critical_count, delta="Must Fix", delta_color="inverse")
+            with col2:
+                if high_count > 0:
+                    st.metric("High Priority", high_count, delta="Should Fix", delta_color="inverse")
+            with col3:
+                if medium_count > 0:
+                    st.metric("Medium Priority", medium_count, delta="Recommended")
+            with col4:
+                if low_count > 0:
+                    st.metric("Low Priority", low_count, delta="Nice to Fix")
+
+            # Display warnings by severity
+            for severity in [WarningSeverity.CRITICAL, WarningSeverity.HIGH, WarningSeverity.MEDIUM, WarningSeverity.LOW]:
+                severity_warnings = [w for w in warnings if w.severity == severity]
+
+                if severity_warnings:
+                    # Show critical and high warnings expanded by default
+                    expanded = severity in [WarningSeverity.CRITICAL, WarningSeverity.HIGH]
+
+                    severity_label = {
+                        WarningSeverity.CRITICAL: "🔴 Critical Issues",
+                        WarningSeverity.HIGH: "🟠 High Priority",
+                        WarningSeverity.MEDIUM: "🟡 Medium Priority",
+                        WarningSeverity.LOW: "🔵 Low Priority"
+                    }[severity]
+
+                    with st.expander(f"{severity_label} ({len(severity_warnings)})", expanded=expanded):
+                        for warning in severity_warnings:
+                            if warning.severity == WarningSeverity.CRITICAL:
+                                st.error(f"**{warning.title}**")
+                                st.markdown(f"{warning.description}")
+                                st.markdown(f"**Fix:** {warning.recommendation}")
+                            elif warning.severity == WarningSeverity.HIGH:
+                                st.warning(f"**{warning.title}**")
+                                st.markdown(f"{warning.description}")
+                                st.markdown(f"**Recommendation:** {warning.recommendation}")
+                            else:
+                                st.info(f"**{warning.title}**")
+                                st.markdown(f"{warning.description}")
+                                st.caption(f"💡 {warning.recommendation}")
+                            st.markdown("---")
+        else:
+            st.success("✅ No issues found! Your resume looks great.")
+
+    except Exception as e:
+        st.warning(f"Could not analyze resume warnings: {e}")
+
+    st.markdown("---")
+
+    # ATS Validation
+    try:
+        from modules.ats_validator import validate_resume_ats
+
+        st.markdown("### 🤖 ATS Compatibility Test")
+
+        # Run validation
+        ats_result = validate_resume_ats(resume_model, "workday")
+
+        # Overall ATS score
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(
+                "ATS Score",
+                f"{ats_result.ats_compatibility_score:.0%}",
+                delta=f"Grade: {ats_result.ats_grade}"
+            )
+        with col2:
+            st.metric("Fields Extracted", f"{ats_result.field_extraction_score:.0%}")
+        with col3:
+            st.metric("Parse Success", f"{ats_result.parse_success_rate:.0%}")
+        with col4:
+            critical_issues = ats_result.critical_issues_count
+            if critical_issues > 0:
+                st.metric("Critical Issues", critical_issues, delta="Fix Now", delta_color="inverse")
+            else:
+                st.metric("Critical Issues", 0, delta="None")
+
+        # Status message
+        if ats_result.is_ats_friendly:
+            st.success("✅ Resume is ATS-friendly and will parse correctly")
+        else:
+            st.warning("⚠️ Resume has ATS compatibility issues that need attention")
+
+        # Show what ATS extracted
+        with st.expander("📋 What ATS Systems See", expanded=False):
+            st.markdown("#### Extracted Information:")
+
+            if ats_result.extracted_name:
+                st.markdown(f"✅ **Name:** {ats_result.extracted_name}")
+            else:
+                st.markdown("❌ **Name:** Not found")
+
+            if ats_result.extracted_email:
+                st.markdown(f"✅ **Email:** {ats_result.extracted_email}")
+            else:
+                st.markdown("❌ **Email:** Not found")
+
+            if ats_result.extracted_phone:
+                st.markdown(f"✅ **Phone:** {ats_result.extracted_phone}")
+            else:
+                st.markdown("⚠️ **Phone:** Not found")
+
+            st.markdown(f"**Positions Found:** {ats_result.total_positions_found}")
+            st.markdown(f"**Skills Found:** {ats_result.total_skills_found}")
+            st.markdown(f"**Education Found:** {ats_result.total_education_found}")
+
+        # Show parsing errors
+        if ats_result.parsing_errors:
+            with st.expander("🔴 Parsing Errors & Fixes", expanded=ats_result.critical_issues_count > 0):
+                for error in ats_result.parsing_errors:
+                    severity = error['severity']
+                    if severity == 'critical':
+                        st.error(f"**{error['issue']}**")
+                        st.markdown(f"**Fix:** {error['fix']}")
+                    elif severity == 'high':
+                        st.warning(f"**{error['issue']}**")
+                        st.markdown(f"**Fix:** {error['fix']}")
+                    else:
+                        st.info(f"**{error['issue']}**")
+                        st.markdown(f"**Fix:** {error['fix']}")
+                    st.markdown("---")
+
+        # Recommendations
+        if ats_result.recommendations:
+            with st.expander("💡 ATS Optimization Recommendations"):
+                for rec in ats_result.recommendations:
+                    st.markdown(f"- {rec}")
+
+    except Exception as e:
+        st.warning(f"Could not run ATS validation: {e}")
+
+    st.markdown("---")
+
+    # Keyword Optimization Analysis
+    try:
+        from modules.keyword_optimizer import analyze_keywords, get_keyword_recommendations
+
+        st.markdown("### 🔑 Keyword Optimization Analysis")
+
+        keyword_report = analyze_keywords(resume_model, job_model)
+
+        # Overall keyword scores
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(
+                "Overall Score",
+                f"{keyword_report.overall_keyword_score:.0%}",
+                delta=f"Grade: {keyword_report.grade}"
+            )
+        with col2:
+            st.metric("Coverage", f"{keyword_report.keyword_coverage_score:.0%}")
+        with col3:
+            st.metric("Density", f"{keyword_report.keyword_density_score:.0%}")
+        with col4:
+            st.metric("Placement", f"{keyword_report.keyword_placement_score:.0%}")
+
+        # Critical missing keywords
+        if keyword_report.critical_missing_keywords:
+            st.error(f"🔴 **Critical:** Missing required skills: {', '.join(keyword_report.critical_missing_keywords)}")
+
+        # Quick recommendations
+        recommendations = get_keyword_recommendations(resume_model, job_model)
+        if recommendations:
+            with st.expander("💡 Quick Keyword Recommendations", expanded=True):
+                for rec in recommendations[:5]:
+                    st.markdown(f"- {rec}")
+
+        # Detailed keyword breakdown
+        with st.expander("📊 Detailed Keyword Analysis"):
+            # Status summary
+            st.markdown(f"**Summary:** {keyword_report.missing_keywords} missing, {keyword_report.underutilized_keywords} underutilized, {keyword_report.optimal_keywords} optimal, {keyword_report.overstuffed_keywords} overstuffed")
+
+            # Show top keywords by status
+            missing = [kw for kw in keyword_report.keywords if kw.status == "missing"][:5]
+            if missing:
+                st.markdown("**Top Missing Keywords:**")
+                for kw in missing:
+                    importance = "🔴 Required" if kw.is_required else "🟡 Preferred"
+                    st.markdown(f"- **{kw.keyword}** ({importance}) - {kw.recommendation}")
+
+    except Exception as e:
+        st.warning(f"Could not analyze keywords: {e}")
+
+    st.markdown("---")
+
     # Detailed results
     tab1, tab2, tab3 = st.tabs(["📋 Job Analysis", "📝 Resume Analysis", "🔬 Gap Analysis"])
 
