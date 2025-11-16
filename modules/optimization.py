@@ -861,11 +861,17 @@ def render_optimization_page() -> bool:
                 # Update the optimization result with the final resume
                 result.optimized_resume = final_resume
 
+                # Store final resume in session
+                st.session_state['final_resume'] = final_resume
+
                 # Mark change review as complete
                 st.session_state[SESSION_KEYS['change_review_complete']] = True
 
                 # Clear the flag
                 st.session_state['show_change_review'] = False
+
+                # Show save version dialog
+                st.session_state['show_save_version_dialog'] = True
 
                 # Move to next step
                 mark_step_complete(3)

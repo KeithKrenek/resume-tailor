@@ -33,8 +33,25 @@ def render_output_generation_page():
     1. Preview the optimized resume
     2. Download in multiple formats (PDF, DOCX, HTML, Markdown)
     3. Save files to the output directory
+    4. Manage resume versions
     """
     st.title("📄 Step 4: Output Generation")
+
+    # Tabs for different views
+    tab1, tab2, tab3 = st.tabs(["📥 Export Resume", "📚 Version History", "🔄 Compare Versions"])
+
+    with tab1:
+        render_export_tab()
+
+    with tab2:
+        render_version_history_tab()
+
+    with tab3:
+        render_version_comparison_tab()
+
+
+def render_export_tab():
+    """Render the export/download tab."""
     st.markdown("Generate and download your optimized resume in multiple formats.")
 
     # Get optimization result from session state
@@ -367,3 +384,59 @@ def render_output_generation_page():
                     st.markdown("**Flagged Changes:**")
                     for change, warnings in authenticity_report['risky_changes']:
                         st.markdown(f"- **{change.location}**: {', '.join(warnings)}")
+
+    # Save version dialog (if triggered from change review)
+    if st.session_state.get('show_save_version_dialog', False):
+        render_save_version_section()
+
+
+def render_save_version_section():
+    """Render the save version section."""
+    from modules.version_manager_ui import render_version_save_dialog
+
+    # Get required data from session
+    optimization_result = st.session_state.get('optimization_result')
+    final_resume = st.session_state.get('final_resume') or optimization_result.optimized_resume
+    inputs = get_all_inputs()
+
+    # Check if optimization tier is available
+    optimization_tier = st.session_state.get('optimization_tier', 'standard')
+    optimization_style = optimization_result.style_used if optimization_result else "balanced"
+
+    st.markdown("---")
+
+    saved = render_version_save_dialog(
+        optimization_result=optimization_result,
+        final_resume=final_resume,
+        job_title=inputs.get('job_title', 'Unknown Position'),
+        company_name=inputs.get('company_name', 'Unknown Company'),
+        job_description=inputs.get('job_description', ''),
+        original_resume_text=inputs.get('resume_text', ''),
+        optimization_style=optimization_style,
+        optimization_tier=optimization_tier
+    )
+
+    if saved:
+        # Clear the dialog flag
+        st.session_state['show_save_version_dialog'] = False
+        st.rerun()
+
+
+def render_version_history_tab():
+    """Render the version history tab."""
+    from modules.version_manager_ui import render_version_history, render_version_editor
+
+    # Check if editing a specific version
+    if 'edit_version_id' in st.session_state:
+        from services.version_manager import VersionManager
+        version_manager = VersionManager()
+        render_version_editor(st.session_state['edit_version_id'], version_manager)
+    else:
+        render_version_history()
+
+
+def render_version_comparison_tab():
+    """Render the version comparison tab."""
+    from modules.version_manager_ui import render_version_comparison
+
+    render_version_comparison()

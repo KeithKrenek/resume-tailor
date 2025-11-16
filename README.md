@@ -8,9 +8,15 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![Anthropic](https://img.shields.io/badge/anthropic-claude-purple.svg)](https://www.anthropic.com/)
 
-## 🆕 Latest Enhancements (v2.2.0)
+## 🆕 Latest Enhancements (v2.3.0)
 
 ### What's New
+- 📚 **Resume Version Management & Comparison** (HIGH) - Track, compare, and manage all resume versions
+  - Save unlimited versions with automatic numbering and metadata
+  - Side-by-side version comparison with metrics delta
+  - Track which versions were submitted and responses received
+  - Filter and organize with custom tags and notes
+  - "Use This" feature to load any previous version
 - 🎯 **Interactive Change Review & Approval System** (CRITICAL) - Full control over every AI-suggested change
   - Accept, reject, edit, or ask AI to revise individual changes
   - Automatic flagging of risky changes (new metrics, organizations, technologies)
@@ -108,6 +114,16 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
   - Save all formats at once
   - Customizable filenames
   - Output folder integration
+
+- **Version Management** 📚
+  - Save versions with automatic numbering
+  - Track company, job, style, and statistics
+  - Add notes and tags for organization
+  - Mark versions as submitted
+  - Browse version history with filtering
+  - Compare any two versions side-by-side
+  - Load any previous version
+  - Application tracking (submitted date, response status)
 
 ### 🛡️ Hallucination Guard (Phase 2)
 

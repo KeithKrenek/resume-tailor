@@ -5,6 +5,122 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2025-01-16
+
+### Added
+
+#### Resume Version Management & Comparison System (HIGH)
+- **Complete version history tracking** - Save, manage, and compare resume optimization attempts
+  - Automatic version numbering and metadata tracking
+  - Track company, job title, optimization style, tier, and statistics
+  - Optional notes and tags for organization
+  - Submission tracking (date submitted, response received status)
+  - Storage statistics (total versions, disk usage, last updated)
+
+- **Version History Browser**:
+  - List all saved versions with smart filtering
+  - Filter by company name, tags, or submission status
+  - View detailed metrics for each version
+  - Edit metadata, notes, and submission status
+  - Delete old versions
+  - Quick actions: View, Use, Edit, Delete
+
+- **Version Comparison Tool**:
+  - Side-by-side comparison of any two versions
+  - Metrics delta visualization (overall score, authenticity, role alignment, ATS)
+  - Content comparison (summary, headline, skills)
+  - Before/after text comparison with highlighting
+
+- **Seamless Workflow Integration**:
+  - Automatic save dialog after change review completion
+  - Three tabs in Step 4: Export Resume, Version History, Compare Versions
+  - "Use This" button to load any version as current
+  - Version saved with full optimization result and final resume
+
+#### New Models & Data Structures
+- **VersionMetadata model** - Track version details:
+  - version_id, version_number, timestamp
+  - job_title, company_name
+  - optimization_style, optimization_tier
+  - total_changes, accepted_changes, rejected_changes
+  - notes, tags (for organization)
+  - is_submitted, submitted_date, response_received (application tracking)
+
+- **ResumeVersion model** - Complete version snapshot:
+  - metadata, optimization_result, final_resume
+  - job_description, original_resume_text
+  - Helper methods: get_metrics_summary()
+
+- **VersionComparison model** - Compare two versions:
+  - get_metrics_delta() - Compute metric differences
+  - get_text_diff() - Extract content differences
+
+#### New Services
+- **VersionManager Service** (`services/version_manager.py`):
+  - save_version() - Save version to disk with metadata
+  - load_version() - Load specific version by ID
+  - list_versions() - List all versions with filtering
+  - delete_version() - Remove version from storage
+  - update_version_metadata() - Update notes, tags, submission status
+  - compare_versions() - Create version comparison
+  - get_storage_stats() - Storage usage analytics
+  - JSON-based storage in ~/resume_tailor_versions
+  - Version index for fast lookups
+
+#### UI Components
+- **Version Manager UI** (`modules/version_manager_ui.py`):
+  - render_version_save_dialog() - Save current version with metadata
+  - render_version_history() - Browse all saved versions
+  - render_version_card() - Display individual version with actions
+  - render_version_comparison() - Compare two versions side-by-side
+  - render_comparison_results() - Visualize comparison metrics and content
+  - render_version_editor() - Edit version metadata and tracking
+
+### Enhanced
+
+#### Workflow Integration
+- Added version save dialog after completing change review (Step 3.5)
+- Integrated version management into Step 4 with tabbed interface
+- Export, History, and Compare tabs for complete version control
+- "Use This" feature to load any saved version
+
+#### User Experience
+- Track application history (which versions were submitted, responses)
+- Organize versions with custom tags and notes
+- Filter and search through version history
+- Compare optimization approaches across versions
+- Informed decision-making with metrics comparison
+
+### Technical Details
+
+**Files Added:**
+- `modules/version_models.py` - Data models for version management
+- `services/version_manager.py` - Version storage and retrieval service
+- `modules/version_manager_ui.py` - UI components for version management
+
+**Files Modified:**
+- `modules/optimization.py` - Trigger save dialog after change review
+- `modules/output.py` - Add version management tabs
+
+**Storage:**
+- Versions stored in `~/resume_tailor_versions/`
+- JSON format for easy portability
+- Index file for fast lookups
+- Incremental version numbering
+
+**Impact:**
+- ✅ Never lose optimization work
+- ✅ Compare different approaches for same job
+- ✅ Track application history and responses
+- ✅ Organize versions by company and role
+- ✅ Make data-driven decisions on resume versions
+- ✅ Export any previous version at any time
+
+**Backward Compatibility:**
+- All changes maintain backward compatibility
+- No breaking changes to existing features
+- Version management is optional (doesn't interfere with normal workflow)
+
 ## [2.2.0] - 2025-01-16
 
 ### Added
