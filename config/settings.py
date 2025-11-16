@@ -82,14 +82,12 @@ SESSION_KEYS = {
 }
 
 # UI Settings
-TOTAL_STEPS = 6
+TOTAL_STEPS = 4
 STEP_NAMES = {
     1: "Input Collection",
     2: "Job & Resume Analysis",
     3: "Resume Optimization",
-    4: "Output Generation",
-    5: "Review & Export",
-    6: "Complete"
+    4: "Output Generation"
 }
 
 # Default Output Folder

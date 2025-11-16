@@ -1,7 +1,7 @@
 """Validation functions for input data."""
 
 import re
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Any
 import validators as val
 
 from config.settings import (
@@ -143,7 +143,7 @@ def validate_folder_path(path: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def extract_basic_info(text: str) -> Dict[str, any]:
+def extract_basic_info(text: str) -> Dict[str, Any]:
     """
     Extract basic information from resume text.
 

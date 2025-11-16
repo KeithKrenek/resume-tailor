@@ -44,7 +44,7 @@ def render_progress_bar(current_step: int) -> None:
     st.markdown("---")
 
 
-def render_job_description_input() -> tuple[str, bool]:
+def render_job_description_input() -> Tuple[str, bool]:
     """
     Render job description input section.
 
@@ -175,7 +175,7 @@ def render_company_url_input() -> str:
     return company_url
 
 
-def render_resume_input() -> tuple[str, dict, bool]:
+def render_resume_input() -> Tuple[str, dict, bool]:
     """
     Render resume input section.
 
@@ -312,7 +312,7 @@ def render_output_folder_input() -> str:
     return output_folder
 
 
-def render_action_buttons(all_valid: bool) -> tuple[bool, bool]:
+def render_action_buttons(all_valid: bool) -> Tuple[bool, bool]:
     """
     Render action buttons (Clear, Continue).
 

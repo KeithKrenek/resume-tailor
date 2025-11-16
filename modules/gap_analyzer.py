@@ -1,6 +1,7 @@
 """Gap analysis between job requirements and resume content."""
 
-from typing import List, Set
+import re
+from typing import List, Set, Tuple, Optional
 from modules.models import JobModel, ResumeModel, GapAnalysis, SkillMatch
 
 
@@ -160,7 +161,7 @@ class GapAnalyzer:
 
     def _check_experience_requirements(
         self, job: JobModel, resume: ResumeModel
-    ) -> tuple[bool, float]:
+    ) -> Tuple[bool, float]:
         """
         Check if resume meets experience requirements.
 
@@ -179,7 +180,7 @@ class GapAnalyzer:
 
         return has_required, gap
 
-    def _extract_required_years(self, job: JobModel) -> float:
+    def _extract_required_years(self, job: JobModel) -> Optional[float]:
         """Extract required years of experience from job."""
         # Check experience level
         if job.experience_level:
@@ -195,7 +196,6 @@ class GapAnalyzer:
         for req in job.requirements:
             desc = req.description.lower()
             # Look for patterns like "5+ years", "5-7 years", "5 years"
-            import re
             match = re.search(r'(\d+)\s*\+?\s*years?', desc)
             if match:
                 return float(match.group(1))

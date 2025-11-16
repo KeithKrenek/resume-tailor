@@ -5,6 +5,7 @@ from modules.models import JobModel, ResumeModel, GapAnalysis
 from agents.job_analysis_agent import analyze_job_posting
 from agents.resume_analysis_agent import analyze_resume
 from modules.gap_analyzer import perform_gap_analysis
+from config.settings import MIN_JOB_DESC_LENGTH, MIN_RESUME_LENGTH
 
 
 def run_analysis(
@@ -75,10 +76,10 @@ def validate_inputs(job_description: str, resume_text: str) -> Tuple[bool, str]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    if not job_description or len(job_description.strip()) < 50:
-        return False, "Job description is too short (minimum 50 characters)"
+    if not job_description or len(job_description.strip()) < MIN_JOB_DESC_LENGTH:
+        return False, f"Job description is too short (minimum {MIN_JOB_DESC_LENGTH} characters)"
 
-    if not resume_text or len(resume_text.strip()) < 100:
-        return False, "Resume text is too short (minimum 100 characters)"
+    if not resume_text or len(resume_text.strip()) < MIN_RESUME_LENGTH:
+        return False, f"Resume text is too short (minimum {MIN_RESUME_LENGTH} characters)"
 
     return True, ""

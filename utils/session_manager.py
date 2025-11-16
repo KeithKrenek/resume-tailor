@@ -38,6 +38,12 @@ def initialize_session_state() -> None:
     if SESSION_KEYS['step_1_complete'] not in st.session_state:
         st.session_state[SESSION_KEYS['step_1_complete']] = False
 
+    if SESSION_KEYS['step_2_complete'] not in st.session_state:
+        st.session_state[SESSION_KEYS['step_2_complete']] = False
+
+    if SESSION_KEYS['step_3_complete'] not in st.session_state:
+        st.session_state[SESSION_KEYS['step_3_complete']] = False
+
     if SESSION_KEYS['current_step'] not in st.session_state:
         st.session_state[SESSION_KEYS['current_step']] = 1
 
@@ -116,6 +122,10 @@ def mark_step_complete(step: int) -> None:
     """
     if step == 1:
         st.session_state[SESSION_KEYS['step_1_complete']] = True
+    elif step == 2:
+        st.session_state[SESSION_KEYS['step_2_complete']] = True
+    elif step == 3:
+        st.session_state[SESSION_KEYS['step_3_complete']] = True
 
 
 def is_step_complete(step: int) -> bool:
@@ -130,6 +140,10 @@ def is_step_complete(step: int) -> bool:
     """
     if step == 1:
         return st.session_state.get(SESSION_KEYS['step_1_complete'], False)
+    elif step == 2:
+        return st.session_state.get(SESSION_KEYS['step_2_complete'], False)
+    elif step == 3:
+        return st.session_state.get(SESSION_KEYS['step_3_complete'], False)
     return False
 
 
@@ -164,7 +178,7 @@ def clear_session_state() -> None:
                 st.session_state[key] = 1
             elif key == SESSION_KEYS['resume_metadata']:
                 st.session_state[key] = {}
-            elif key in [SESSION_KEYS['step_1_complete']]:
+            elif key in [SESSION_KEYS['step_1_complete'], SESSION_KEYS['step_2_complete'], SESSION_KEYS['step_3_complete']]:
                 st.session_state[key] = False
             else:
                 st.session_state[key] = ""
