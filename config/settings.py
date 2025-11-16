@@ -74,6 +74,9 @@ SESSION_KEYS = {
     # Step 3: Optimization
     'optimization_result': 'optimization_result',
 
+    # Step 3.5: Change Review
+    'change_review_complete': 'change_review_complete',
+
     # Step tracking
     'step_1_complete': 'step_1_complete',
     'step_2_complete': 'step_2_complete',

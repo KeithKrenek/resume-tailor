@@ -487,6 +487,14 @@ class ChangeType(str, Enum):
     OTHER = "other"
 
 
+class ChangeStatus(str, Enum):
+    """Status of a resume change during the review process."""
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    EDITED = "edited"
+
+
 @dataclass
 class ResumeChange:
     """Represents a single change made to a resume during optimization."""
@@ -496,6 +504,9 @@ class ResumeChange:
     before: str
     after: str
     rationale: str  # Short explanation for the change
+    status: ChangeStatus = ChangeStatus.PENDING  # Review status
+    is_flagged: bool = False  # Whether this change is flagged as risky
+    edited_value: Optional[str] = None  # User-edited version of 'after' if status is EDITED
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -505,20 +516,48 @@ class ResumeChange:
             'location': self.location,
             'before': self.before,
             'after': self.after,
-            'rationale': self.rationale
+            'rationale': self.rationale,
+            'status': self.status.value if isinstance(self.status, ChangeStatus) else self.status,
+            'is_flagged': self.is_flagged,
+            'edited_value': self.edited_value
         }
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ResumeChange':
         """Create from dictionary."""
+        # Handle backward compatibility for old data without status
+        status_value = data.get('status', ChangeStatus.PENDING.value)
+        status = ChangeStatus(status_value) if isinstance(status_value, str) else status_value
+
         return cls(
             id=data['id'],
             change_type=ChangeType(data['change_type']),
             location=data['location'],
             before=data['before'],
             after=data['after'],
-            rationale=data['rationale']
+            rationale=data['rationale'],
+            status=status,
+            is_flagged=data.get('is_flagged', False),
+            edited_value=data.get('edited_value')
         )
+
+    def get_final_value(self) -> str:
+        """Get the final value to use (edited_value if edited, otherwise after)."""
+        if self.status == ChangeStatus.EDITED and self.edited_value is not None:
+            return self.edited_value
+        return self.after
+
+    def is_accepted(self) -> bool:
+        """Check if change is accepted or edited (both count as approved)."""
+        return self.status in (ChangeStatus.ACCEPTED, ChangeStatus.EDITED)
+
+    def is_rejected(self) -> bool:
+        """Check if change is rejected."""
+        return self.status == ChangeStatus.REJECTED
+
+    def is_pending(self) -> bool:
+        """Check if change is still pending review."""
+        return self.status == ChangeStatus.PENDING
 
 
 @dataclass
@@ -656,3 +695,38 @@ class ResumeOptimizationResult:
         if self.authenticity_report:
             return self.authenticity_report.get('issues_found', [])
         return []
+
+    def get_accepted_changes(self) -> List[ResumeChange]:
+        """Get all accepted or edited changes."""
+        return [c for c in self.changes if c.is_accepted()]
+
+    def get_rejected_changes(self) -> List[ResumeChange]:
+        """Get all rejected changes."""
+        return [c for c in self.changes if c.is_rejected()]
+
+    def get_pending_changes(self) -> List[ResumeChange]:
+        """Get all pending changes."""
+        return [c for c in self.changes if c.is_pending()]
+
+    def get_flagged_changes(self) -> List[ResumeChange]:
+        """Get all flagged changes regardless of status."""
+        return [c for c in self.changes if c.is_flagged]
+
+    def get_change_stats(self) -> Dict[str, int]:
+        """Get statistics about change statuses."""
+        stats = {
+            'total': len(self.changes),
+            'accepted': len(self.get_accepted_changes()),
+            'rejected': len(self.get_rejected_changes()),
+            'pending': len(self.get_pending_changes()),
+            'flagged': len(self.get_flagged_changes())
+        }
+        return stats
+
+    def all_changes_reviewed(self) -> bool:
+        """Check if all changes have been reviewed (no pending)."""
+        return len(self.get_pending_changes()) == 0
+
+    def has_any_accepted_changes(self) -> bool:
+        """Check if there are any accepted changes."""
+        return len(self.get_accepted_changes()) > 0

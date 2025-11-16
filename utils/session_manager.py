@@ -44,6 +44,9 @@ def initialize_session_state() -> None:
     if SESSION_KEYS['step_3_complete'] not in st.session_state:
         st.session_state[SESSION_KEYS['step_3_complete']] = False
 
+    if SESSION_KEYS['change_review_complete'] not in st.session_state:
+        st.session_state[SESSION_KEYS['change_review_complete']] = False
+
     if SESSION_KEYS['current_step'] not in st.session_state:
         st.session_state[SESSION_KEYS['current_step']] = 1
 
@@ -178,7 +181,7 @@ def clear_session_state() -> None:
                 st.session_state[key] = 1
             elif key == SESSION_KEYS['resume_metadata']:
                 st.session_state[key] = {}
-            elif key in [SESSION_KEYS['step_1_complete'], SESSION_KEYS['step_2_complete'], SESSION_KEYS['step_3_complete']]:
+            elif key in [SESSION_KEYS['step_1_complete'], SESSION_KEYS['step_2_complete'], SESSION_KEYS['step_3_complete'], SESSION_KEYS['change_review_complete']]:
                 st.session_state[key] = False
             else:
                 st.session_state[key] = ""

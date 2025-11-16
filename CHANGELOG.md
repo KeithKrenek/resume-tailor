@@ -5,6 +5,109 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-01-16
+
+### Added
+
+#### Interactive Change Review & Approval System (CRITICAL)
+- **Step 3.5: Change Review** - New interactive step between optimization and output generation
+  - Individual change approval with Accept/Reject/Edit/Ask AI to Revise options
+  - Side-by-side before/after comparison for each change
+  - Automatic flagging of potentially risky changes (new metrics, organizations, technologies)
+  - Real-time progress tracking showing reviewed vs pending changes
+  - Bulk actions: Accept/Reject all visible, Accept all non-flagged, Reset to pending
+  - Smart filters: Filter by status (pending/accepted/rejected), flagged only, or change type
+  - Inline editing with rich text areas for custom modifications
+  - AI-powered revision based on user feedback
+
+#### New Models & Enums
+- **ChangeStatus enum** - Track review status: PENDING, ACCEPTED, REJECTED, EDITED
+  - All changes start as PENDING after optimization
+  - Users must review and approve before proceeding to output
+  - Edited changes store both AI-suggested and user-edited versions
+
+- **Enhanced ResumeChange model**:
+  - Added `status: ChangeStatus` field (default: PENDING)
+  - Added `is_flagged: bool` field for risky change detection
+  - Added `edited_value: Optional[str]` for user edits
+  - Helper methods: `get_final_value()`, `is_accepted()`, `is_rejected()`, `is_pending()`
+
+- **Enhanced ResumeOptimizationResult model**:
+  - New methods: `get_accepted_changes()`, `get_rejected_changes()`, `get_pending_changes()`
+  - New methods: `get_flagged_changes()`, `get_change_stats()`, `all_changes_reviewed()`
+  - New method: `has_any_accepted_changes()` - Validates at least one change is accepted
+
+#### New Services & Agents
+- **Resume Builder Service** (`services/resume_builder.py`):
+  - `apply_accepted_changes()` - Generates final resume from only accepted changes
+  - Smart change application by type (headline, summary, experience bullets, skills, education)
+  - Location parsing for precise change application (e.g., "experience[0].bullets[2]")
+  - `get_change_summary()` - Statistics on accepted vs rejected changes
+  - `validate_final_resume()` - Ensures final resume meets quality standards
+
+- **Change Revision Agent** (`agents/change_revision_agent.py`):
+  - AI-powered revision based on user feedback
+  - Uses Claude Sonnet 4 for high-quality revisions
+  - Maintains truthfulness while incorporating user guidance
+  - Preserves original facts and timeline
+
+#### UI Components
+- **Change Review Module** (`modules/change_review.py`):
+  - `render_change_statistics()` - Progress dashboard with metrics
+  - `render_change_filters()` - Smart filtering controls
+  - `render_change_card()` - Individual change display with action buttons
+  - `render_bulk_actions()` - Batch operations on filtered changes
+  - `auto_flag_risky_changes()` - Automatic risk detection
+  - Edit dialog with inline text editing
+  - AI revision dialog with custom guidance input
+
+#### Session Management
+- Added `change_review_complete` to SESSION_KEYS
+- Session state initialization for change review tracking
+- Proper cleanup in `clear_session_state()`
+- Integration with existing workflow progression
+
+### Enhanced
+
+#### Workflow Integration
+- Seamless integration between Step 3 (Optimization) and Step 4 (Output)
+- "Review Changes →" button replaces "Continue to Output →" until review is complete
+- Re-optimization clears change review state for fresh review
+- Back navigation preserves change review progress
+
+#### User Experience
+- Users maintain full control over resume changes
+- Transparent view of all AI modifications
+- Confidence in resume authenticity before submission
+- Prevents accidental acceptance of fabricated information
+
+### Technical Details
+
+**Files Added:**
+- `modules/change_review.py` - Interactive change review UI
+- `agents/change_revision_agent.py` - AI-powered change revision
+- `services/resume_builder.py` - Final resume generation from accepted changes
+
+**Files Modified:**
+- `modules/models.py` - Added ChangeStatus enum, enhanced ResumeChange and ResumeOptimizationResult
+- `modules/optimization.py` - Integrated change review workflow
+- `config/settings.py` - Added change_review_complete session key
+- `utils/session_manager.py` - Initialize and manage change review state
+
+**Impact:**
+- ✅ Users have full control over every resume change
+- ✅ Reduces risk of fabricated content in final resume
+- ✅ Increases user confidence and resume authenticity
+- ✅ Enables fine-tuning of AI suggestions
+- ✅ Provides transparency into optimization process
+- ✅ Maintains workflow continuity
+
+**Backward Compatibility:**
+- All changes maintain backward compatibility
+- Existing optimization results can be upgraded seamlessly
+- No breaking changes to public APIs
+- Default values ensure old data works with new code
+
 ## [2.1.1] - 2025-01-16
 
 ### Fixed
