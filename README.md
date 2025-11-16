@@ -8,7 +8,19 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![Anthropic](https://img.shields.io/badge/anthropic-claude-purple.svg)](https://www.anthropic.com/)
 
-## ✨ Features
+## 🆕 Latest Enhancements (v2.0)
+
+### What's New
+- ✨ **Resume Score Dashboard** - Get a comprehensive 0-100 score across 6 key metrics (ATS, Keywords, Impact, etc.)
+- ⚠️ **Smart Warnings System** - Proactive issue detection with 4 severity levels and actionable fixes
+- 🔍 **Company & Industry Research** - AI-powered intelligence gathering for better optimization
+- 🤖 **Multi-Model Support** - Choose between Claude Sonnet/Opus, GPT-4, or Gemini
+
+**[📖 Read the detailed New Features Guide →](NEW_FEATURES_GUIDE.md)**
+
+---
+
+## ✨ Core Features
 
 ### 🎯 Complete 4-Step Workflow (All Implemented!)
 

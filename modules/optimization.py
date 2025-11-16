@@ -106,16 +106,57 @@ def perform_optimization(
     return result, errors
 
 
-def render_optimization_controls() -> tuple[str, str, bool]:
+def render_optimization_controls() -> tuple[str, str, bool, str, bool]:
     """
     Render optimization control panel.
 
     Returns:
-        Tuple of (tier, style, run_optimization)
+        Tuple of (tier, style, run_optimization, model_id, enable_research)
     """
     from config.optimization_config import OptimizationTier
 
     st.markdown("### ⚙️ Optimization Settings")
+
+    # Model selection
+    st.markdown("#### 🤖 AI Model Selection")
+
+    try:
+        from utils.model_provider import get_available_models
+
+        available_models = get_available_models()
+
+        if available_models:
+            model_options = [
+                f"{m.display_name} (${m.cost_per_1k_output:.3f}/1k tokens)"
+                for m in available_models
+            ]
+
+            model_choice = st.selectbox(
+                "Choose AI Model",
+                options=model_options,
+                index=0,  # Default to first available (usually Claude Sonnet)
+                help="Different models offer varying quality, speed, and cost tradeoffs"
+            )
+
+            # Extract selected model
+            selected_model_idx = model_options.index(model_choice)
+            selected_model = available_models[selected_model_idx]
+            model_id = selected_model.model_id
+
+            # Show model info
+            with st.expander("ℹ️ Model Information"):
+                st.write(f"**Provider:** {selected_model.provider.value}")
+                st.write(f"**Cost:** ${selected_model.cost_per_1k_input:.4f} per 1k input tokens")
+                st.write(f"**Cost:** ${selected_model.cost_per_1k_output:.4f} per 1k output tokens")
+                st.write(f"**Context Window:** {selected_model.context_window:,} tokens")
+        else:
+            st.warning("No AI models available. Please set API keys in .env file.")
+            model_id = "claude-sonnet-4-20250514"  # Fallback
+    except Exception as e:
+        st.warning(f"Could not load model options: {e}")
+        model_id = "claude-sonnet-4-20250514"  # Fallback
+
+    st.markdown("---")
 
     # Tier selection
     st.markdown("#### 📊 Optimization Tier")
@@ -180,6 +221,20 @@ def render_optimization_controls() -> tuple[str, str, bool]:
     }
     st.info(descriptions[style])
 
+    st.markdown("---")
+
+    # Company research option
+    st.markdown("#### 🔍 Company Research")
+
+    enable_research = st.checkbox(
+        "Enable Company & Industry Research",
+        value=config.enable_company_research,
+        help="Use AI to research the company and industry for better optimization (adds ~30 seconds)"
+    )
+
+    if enable_research:
+        st.info("💡 Research will provide company culture insights and industry-specific keywords")
+
     # Run button
     run_optimization = st.button(
         "✨ Optimize Resume",
@@ -187,7 +242,7 @@ def render_optimization_controls() -> tuple[str, str, bool]:
         use_container_width=True
     )
 
-    return tier, style, run_optimization
+    return tier, style, run_optimization, model_id, enable_research
 
 
 def render_summary_metrics(result: ResumeOptimizationResult, gap_before=None, gap_after=None):
@@ -820,7 +875,7 @@ def render_optimization_page() -> bool:
         col1, col2 = st.columns([1, 2])
 
         with col1:
-            tier, style, run_optimization = render_optimization_controls()
+            tier, style, run_optimization, model_id, enable_research = render_optimization_controls()
 
         with col2:
             st.markdown("### 📊 Current Gap Analysis")
@@ -831,6 +886,62 @@ def render_optimization_page() -> bool:
         if not run_optimization:
             st.info("👆 Configure settings above and click 'Optimize Resume' to begin.")
             return False
+
+        # Store selections in session
+        st.session_state['selected_model_id'] = model_id
+        st.session_state['enable_research'] = enable_research
+
+        # Run company research if enabled
+        company_research = None
+        industry_research = None
+
+        if enable_research:
+            inputs = get_all_inputs()
+            company_name = inputs.get('company_name')
+
+            if company_name:
+                with st.status("🔍 Researching company and industry...", expanded=True) as status:
+                    try:
+                        from agents.research_agent import research_company, research_industry
+
+                        st.write(f"Researching {company_name}...")
+                        success, company_research, error = research_company(
+                            company_name=company_name,
+                            company_url=inputs.get('company_url')
+                        )
+
+                        if success and company_research:
+                            st.write(f"✅ Company research complete")
+                            st.write(f"   Industry: {company_research.industry}")
+
+                            # Research the industry
+                            if company_research.industry:
+                                st.write(f"Researching {company_research.industry} industry...")
+                                success_ind, industry_research, error_ind = research_industry(
+                                    industry_name=company_research.industry
+                                )
+
+                                if success_ind:
+                                    st.write(f"✅ Industry research complete")
+
+                            status.update(label="✅ Research complete", state="complete")
+
+                            # Store in session
+                            st.session_state['company_research'] = company_research
+                            st.session_state['industry_research'] = industry_research
+
+                            # Show summary
+                            st.info(f"📊 {company_research.summary}")
+
+                        else:
+                            st.warning(f"⚠️ Could not research company: {error}")
+                            status.update(label="⚠️ Research partially complete", state="error")
+
+                    except Exception as e:
+                        st.warning(f"⚠️ Research error: {e}")
+                        status.update(label="⚠️ Research failed", state="error")
+            else:
+                st.warning("⚠️ No company name available for research. Proceeding without research.")
 
         # Run optimization
         st.markdown("---")
