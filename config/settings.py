@@ -74,6 +74,9 @@ SESSION_KEYS = {
     # Step 3: Optimization
     'optimization_result': 'optimization_result',
 
+    # Step 3.5: Change Review
+    'change_review_complete': 'change_review_complete',
+
     # Step tracking
     'step_1_complete': 'step_1_complete',
     'step_2_complete': 'step_2_complete',
@@ -82,14 +85,12 @@ SESSION_KEYS = {
 }
 
 # UI Settings
-TOTAL_STEPS = 6
+TOTAL_STEPS = 4
 STEP_NAMES = {
     1: "Input Collection",
     2: "Job & Resume Analysis",
     3: "Resume Optimization",
-    4: "Output Generation",
-    5: "Review & Export",
-    6: "Complete"
+    4: "Output Generation"
 }
 
 # Default Output Folder

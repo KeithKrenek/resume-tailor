@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import Optional
+from typing import Optional, Tuple, Any
 
 
 def extract_json_object(text: str) -> Optional[dict]:
@@ -202,7 +202,7 @@ def extract_balanced_array(text: str) -> Optional[str]:
     return None
 
 
-def safe_json_loads(text: str, default=None) -> any:
+def safe_json_loads(text: str, default=None) -> Any:
     """
     Safely parse JSON with a default fallback.
 
@@ -219,7 +219,7 @@ def safe_json_loads(text: str, default=None) -> any:
         return default
 
 
-def validate_json_structure(data: dict, required_keys: list) -> tuple[bool, str]:
+def validate_json_structure(data: dict, required_keys: list) -> Tuple[bool, str]:
     """
     Validate that a JSON object has required keys.
 

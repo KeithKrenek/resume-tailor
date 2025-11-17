@@ -842,6 +842,53 @@ def render_optimization_page() -> bool:
     Returns:
         True if step is complete and user clicked Continue
     """
+    # Check if we should show change review instead
+    if st.session_state.get('show_change_review', False):
+        from modules.change_review import render_change_review_page
+
+        result = st.session_state.get('optimization_result')
+        if result:
+            # Render change review page
+            review_complete = render_change_review_page(result)
+
+            if review_complete:
+                # User clicked "Continue to Output"
+                # Apply accepted changes to generate final resume
+                from services.resume_builder import apply_accepted_changes
+
+                final_resume = apply_accepted_changes(result)
+
+                # Update the optimization result with the final resume
+                result.optimized_resume = final_resume
+
+                # Store final resume in session
+                st.session_state['final_resume'] = final_resume
+
+                # Mark change review as complete
+                st.session_state[SESSION_KEYS['change_review_complete']] = True
+
+                # Clear the flag
+                st.session_state['show_change_review'] = False
+
+                # Show save version dialog
+                st.session_state['show_save_version_dialog'] = True
+
+                # Move to next step
+                mark_step_complete(3)
+                set_current_step(4)
+                st.rerun()
+                return True
+            else:
+                # User clicked "Back to Optimization"
+                st.session_state['show_change_review'] = False
+                st.rerun()
+                return False
+        else:
+            # No optimization result, go back
+            st.session_state['show_change_review'] = False
+            st.rerun()
+            return False
+
     # Progress bar
     render_progress_bar(3)
 
@@ -1093,19 +1140,35 @@ def render_optimization_page() -> bool:
 
     with col2:
         if st.button("🔄 Re-optimize"):
-            # Clear cached result
+            # Clear cached result and change review status
             if 'optimization_result' in st.session_state:
                 del st.session_state['optimization_result']
+            if SESSION_KEYS['change_review_complete'] in st.session_state:
+                st.session_state[SESSION_KEYS['change_review_complete']] = False
+            if 'show_change_review' in st.session_state:
+                st.session_state['show_change_review'] = False
             st.rerun()
 
     with col3:
-        if st.button("Continue to Output →", type="primary"):
-            mark_step_complete(3)
-            set_current_step(4)
-            st.success("✅ Step 3 completed! Moving to output generation...")
-            import time
-            time.sleep(1)
-            st.rerun()
-            return True
+        # Check if change review is enabled and completed
+        change_review_complete = st.session_state.get(SESSION_KEYS['change_review_complete'], False)
+
+        if not change_review_complete:
+            # Show button to go to change review
+            if st.button("Review Changes →", type="primary"):
+                # Go to change review instead of output
+                st.session_state['show_change_review'] = True
+                st.rerun()
+                return False
+        else:
+            # Change review is complete, can proceed to output
+            if st.button("Continue to Output →", type="primary"):
+                mark_step_complete(3)
+                set_current_step(4)
+                st.success("✅ Step 3 completed! Moving to output generation...")
+                import time
+                time.sleep(1)
+                st.rerun()
+                return True
 
     return False

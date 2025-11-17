@@ -8,9 +8,33 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![Anthropic](https://img.shields.io/badge/anthropic-claude-purple.svg)](https://www.anthropic.com/)
 
-## 🆕 Latest Enhancements (v2.0)
+## 🆕 Latest Enhancements (v2.5.0)
 
 ### What's New
+- 🤖 **ATS Simulation & Testing** (HIGH) - Test how ATS systems will parse your resume
+  - AI-powered parsing simulation with 6-category analysis
+  - Overall score (0-100) and letter grade
+  - Keyword matching analysis against job description
+  - Critical issues, warnings, and actionable recommendations
+  - Data extraction verification (what ATS "sees")
+  - One-click testing before submission
+- ✏️ **Smart Resume Editor with Inline Optimization** (HIGH) - Fine-tune any section with AI assistance
+  - Click-to-edit interface for all resume sections
+  - "Improve This" button for AI-powered enhancements
+  - "Get Suggestions" for actionable improvement tips
+  - Edit history tracking with undo capability
+  - Manual editing with real-time updates
+- 📚 **Resume Version Management & Comparison** (HIGH) - Track, compare, and manage all resume versions
+  - Save unlimited versions with automatic numbering and metadata
+  - Side-by-side version comparison with metrics delta
+  - Track which versions were submitted and responses received
+  - Filter and organize with custom tags and notes
+  - "Use This" feature to load any previous version
+- 🎯 **Interactive Change Review & Approval System** (CRITICAL) - Full control over every AI-suggested change
+  - Accept, reject, edit, or ask AI to revise individual changes
+  - Automatic flagging of risky changes (new metrics, organizations, technologies)
+  - Side-by-side before/after comparison with inline editing
+  - Bulk actions and smart filtering by status or change type
 - ✨ **Resume Score Dashboard** - Get a comprehensive 0-100 score across 6 key metrics (ATS, Keywords, Impact, etc.)
 - ⚠️ **Smart Warnings System** - Proactive issue detection with 4 severity levels and actionable fixes
 - 🔍 **Company & Industry Research** - AI-powered intelligence gathering for better optimization
@@ -73,6 +97,14 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
   - Rationale for each change
   - Categorized by change type
 
+- **Interactive Change Review** 🎯
+  - Review and approve each change individually
+  - Accept, reject, edit, or ask AI to revise
+  - Automatic flagging of risky changes
+  - Bulk actions for efficient review
+  - Smart filtering by status and type
+  - Final resume generated only from accepted changes
+
 - **Hallucination Guard** 🛡️
   - LLM-based authenticity verification
   - Detects fabrications and exaggerations
@@ -95,6 +127,40 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
   - Save all formats at once
   - Customizable filenames
   - Output folder integration
+
+- **Smart Resume Editor** ✏️
+  - Click-to-edit any resume section
+  - AI-powered "Improve This" button
+  - Get actionable improvement suggestions
+  - Manual editing with live updates
+  - Edit history with undo capability
+  - Reset to optimized version
+  - Context-aware AI improvements
+
+- **ATS Simulation & Testing** 🤖
+  - One-click ATS compatibility testing
+  - Overall score (0-100) and letter grade
+  - 6-category detailed analysis:
+    - Parsing Quality, Contact Extraction
+    - Section Identification, Keyword Density
+    - Format Compatibility, Experience Parsing
+  - Keyword matching against job description
+  - Match rate percentage with matched/missing keywords
+  - Critical issues and warnings identification
+  - Actionable recommendations for improvements
+  - Data extraction verification
+  - See what ATS "sees" (simplified view)
+  - Test before submission to maximize success
+
+- **Version Management** 📚
+  - Save versions with automatic numbering
+  - Track company, job, style, and statistics
+  - Add notes and tags for organization
+  - Mark versions as submitted
+  - Browse version history with filtering
+  - Compare any two versions side-by-side
+  - Load any previous version
+  - Application tracking (submitted date, response status)
 
 ### 🛡️ Hallucination Guard (Phase 2)
 
