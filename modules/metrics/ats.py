@@ -1,11 +1,14 @@
 """
 ATS Optimization Metric
 Evaluates resume compatibility with Applicant Tracking Systems.
+
+IMPROVED VERSION: Uses comprehensive stopwords for accurate keyword extraction.
 """
 
 import re
 from typing import Set
 from .base import MetricCalculator, MetricScore
+from modules.llm_keyword_extractor import COMPREHENSIVE_STOPWORDS
 
 
 class ATSScorer(MetricCalculator):
@@ -216,18 +219,15 @@ class ATSScorer(MetricCalculator):
         return round(total_words / len(sentences), 1)
 
     def _extract_keywords(self, text: str) -> Set[str]:
-        """Extract keywords (4+ character words, filtered)."""
+        """
+        Extract keywords (4+ character words, filtered).
+
+        IMPROVED: Now uses comprehensive stopword list (400+ words)
+        instead of the inadequate 30-word list.
+        """
         words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
 
-        # Filter common stop words
-        stop_words = {
-            'about', 'after', 'before', 'during', 'from', 'into', 'through',
-            'that', 'this', 'these', 'those', 'with', 'will', 'would', 'should',
-            'could', 'have', 'been', 'being', 'their', 'there', 'where', 'when',
-            'what', 'which', 'while', 'work', 'working', 'experience', 'ability',
-            'apply', 'applicant', 'candidate', 'position', 'role', 'company',
-            'team', 'strong', 'good', 'great', 'excellent', 'required', 'preferred'
-        }
+        # Use comprehensive stopword list (400+ words)
+        keywords = {w for w in words if w not in COMPREHENSIVE_STOPWORDS}
 
-        keywords = {w for w in words if w not in stop_words}
         return keywords

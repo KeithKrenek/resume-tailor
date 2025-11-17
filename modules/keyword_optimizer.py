@@ -10,6 +10,15 @@ from typing import List, Dict, Set, Tuple, Optional
 import re
 from collections import Counter
 from modules.models import ResumeModel, JobModel
+from modules.llm_keyword_extractor import (
+    LLMKeywordExtractor,
+    extract_job_keywords,
+    extract_resume_keywords,
+    COMPREHENSIVE_STOPWORDS
+)
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -136,27 +145,84 @@ class KeywordOptimizer:
     strategic recommendations for ATS optimization.
     """
 
-    # Common semantic variations for technical terms
+    # Comprehensive semantic variations for technical terms
     SEMANTIC_VARIATIONS = {
-        'python': ['python 3', 'python programming', 'pythonic', 'python development'],
-        'javascript': ['js', 'javascript es6', 'javascript development', 'ecmascript'],
-        'react': ['reactjs', 'react.js', 'react native'],
-        'node': ['nodejs', 'node.js'],
-        'aws': ['amazon web services', 'aws cloud'],
-        'kubernetes': ['k8s', 'container orchestration'],
-        'docker': ['containerization', 'docker containers'],
-        'agile': ['scrum', 'agile methodology', 'agile development'],
-        'machine learning': ['ml', 'machine learning algorithms'],
-        'artificial intelligence': ['ai', 'artificial intelligence'],
-        'sql': ['structured query language', 'sql database'],
-        'ci/cd': ['continuous integration', 'continuous deployment', 'ci cd'],
-        'rest': ['rest api', 'restful api', 'rest apis'],
-        'git': ['version control', 'git version control'],
+        # Programming Languages
+        'python': ['python 3', 'python programming', 'pythonic', 'python development', 'python developer'],
+        'javascript': ['js', 'javascript es6', 'javascript development', 'ecmascript', 'es6', 'es2015'],
+        'java': ['java programming', 'java development', 'java developer', 'jdk', 'jre'],
+        'typescript': ['ts', 'typescript development'],
+        'c++': ['cpp', 'c plus plus'],
+        'c#': ['csharp', 'c sharp'],
+        'go': ['golang', 'go programming'],
+
+        # Frameworks
+        'react': ['reactjs', 'react.js', 'react native', 'react development'],
+        'angular': ['angularjs', 'angular.js'],
+        'vue': ['vuejs', 'vue.js'],
+        'node': ['nodejs', 'node.js', 'node development'],
+        'django': ['django framework', 'django development'],
+        'flask': ['flask framework'],
+        'spring': ['spring boot', 'spring framework'],
+        'express': ['expressjs', 'express.js'],
+        '.net': ['dotnet', 'dot net', 'asp.net', 'aspnet'],
+
+        # Databases
+        'postgresql': ['postgres', 'psql', 'postgresql database'],
+        'mongodb': ['mongo', 'mongodb database', 'nosql'],
+        'mysql': ['mysql database'],
+        'sql': ['structured query language', 'sql database', 'sql queries'],
+        'nosql': ['no sql', 'non-relational database'],
+
+        # Cloud & Infrastructure
+        'aws': ['amazon web services', 'aws cloud', 'amazon cloud'],
+        'azure': ['microsoft azure', 'azure cloud'],
+        'gcp': ['google cloud', 'google cloud platform'],
+        'kubernetes': ['k8s', 'container orchestration', 'k8s orchestration'],
+        'docker': ['containerization', 'docker containers', 'container technology'],
+        'terraform': ['infrastructure as code', 'iac'],
+        'ci/cd': ['continuous integration', 'continuous deployment', 'ci cd', 'cicd'],
+
+        # APIs & Architecture
+        'rest': ['rest api', 'restful api', 'rest apis', 'restful'],
+        'graphql': ['graph ql', 'graphql api'],
+        'microservices': ['micro services', 'microservice architecture'],
+        'api': ['apis', 'application programming interface'],
+
+        # Methodologies
+        'agile': ['scrum', 'agile methodology', 'agile development', 'agile project management'],
+        'scrum': ['agile scrum', 'scrum methodology'],
+        'devops': ['dev ops', 'devops practices', 'devops engineer'],
+        'tdd': ['test driven development', 'test-driven development'],
+
+        # Data & ML
+        'machine learning': ['ml', 'machine learning algorithms', 'machine learning models'],
+        'artificial intelligence': ['ai', 'artificial intelligence', 'ai models'],
+        'deep learning': ['neural networks', 'deep neural networks'],
+        'data science': ['data scientist', 'data analytics', 'data analysis'],
+        'nlp': ['natural language processing', 'text processing'],
+
+        # Version Control
+        'git': ['version control', 'git version control', 'source control'],
+        'github': ['git hub', 'github repository'],
+        'gitlab': ['git lab', 'gitlab repository'],
+
+        # Testing
+        'unit testing': ['unit test', 'unit tests'],
+        'integration testing': ['integration test', 'integration tests'],
+        'automation': ['test automation', 'automated testing'],
+
+        # Leadership & Soft Skills
+        'leadership': ['team leadership', 'lead', 'leading', 'leader'],
+        'management': ['project management', 'manage', 'managing', 'manager'],
+        'collaboration': ['collaborate', 'collaborative', 'teamwork', 'team work'],
+        'communication': ['communicate', 'communicating'],
     }
 
-    def __init__(self):
-        """Initialize keyword optimizer."""
-        pass
+    def __init__(self, api_key: Optional[str] = None):
+        """Initialize keyword optimizer with LLM extractor."""
+        self.llm_extractor = LLMKeywordExtractor(api_key=api_key)
+        logger.info("KeywordOptimizer initialized with LLM extraction support")
 
     def analyze(
         self,
@@ -202,26 +268,49 @@ class KeywordOptimizer:
 
     def _extract_job_keywords(self, job: JobModel) -> Dict[str, int]:
         """
-        Extract keywords from job description with frequency counts.
+        Extract keywords from job description with frequency counts using LLM.
 
         Returns:
             Dictionary mapping keyword to frequency in job description
         """
-        keywords = Counter()
+        logger.info("Extracting job keywords with LLM")
 
-        # Add required skills (high weight)
-        for skill in job.required_skills:
-            keywords[skill.lower()] += 3  # Weight required skills more
+        # Use LLM extractor if we have raw text
+        if job.raw_text:
+            extraction_result = self.llm_extractor.extract_from_job_description(
+                job_text=job.raw_text,
+                required_skills=job.required_skills,
+                preferred_skills=job.preferred_skills
+            )
 
-        # Add preferred skills
-        for skill in job.preferred_skills:
-            keywords[skill.lower()] += 1
+            # Get weighted keywords from LLM extraction
+            weighted_keywords = extraction_result.get_weighted_keywords()
 
-        # Extract from job description text
-        # Note: In production, you'd parse the actual job description text
-        # For now, we use the structured data
+            logger.info(f"LLM extracted {len(weighted_keywords)} weighted keywords from job")
+            return weighted_keywords
 
-        return dict(keywords)
+        # Fallback: Use structured skills only (old behavior, but improved)
+        else:
+            logger.warning("No raw job text available, using structured skills only")
+            keywords = Counter()
+
+            # Add required skills (high weight)
+            for skill in job.required_skills:
+                keywords[skill.lower()] += 3
+
+            # Add preferred skills
+            for skill in job.preferred_skills:
+                keywords[skill.lower()] += 1
+
+            # Extract from other job fields
+            if job.description:
+                # Simple extraction from description
+                words = re.findall(r'\b[a-zA-Z]{4,}\b', job.description.lower())
+                for word in words:
+                    if word not in COMPREHENSIVE_STOPWORDS:
+                        keywords[word] += 1
+
+            return dict(keywords)
 
     def _analyze_keyword(
         self,
@@ -231,22 +320,26 @@ class KeywordOptimizer:
         job: JobModel,
         target_multiplier: float
     ) -> KeywordAnalysis:
-        """Analyze a single keyword."""
+        """Analyze a single keyword with intelligent semantic matching."""
 
-        # Count occurrences in resume
+        # Count occurrences in resume using word boundaries for accuracy
         resume_text = self._get_resume_text(resume).lower()
-        current_count = resume_text.count(keyword.lower())
+
+        # Use word boundaries to avoid false matches (e.g., "react" in "create")
+        keyword_pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+        current_count = len(re.findall(keyword_pattern, resume_text))
 
         # Find semantic variations
         variations = self._find_variations(keyword)
-        variations_in_resume = [
-            var for var in variations
-            if var.lower() in resume_text
-        ]
+        variations_in_resume = []
 
-        # Add variation counts to current count
-        for var in variations_in_resume:
-            current_count += resume_text.count(var.lower())
+        # Count variations using word boundaries
+        for var in variations:
+            var_pattern = r'\b' + re.escape(var.lower()) + r'\b'
+            if re.search(var_pattern, resume_text):
+                variations_in_resume.append(var)
+                # Add variation counts to current count
+                current_count += len(re.findall(var_pattern, resume_text))
 
         # Calculate target density
         # Rule: Keyword should appear 1.5x more in resume than in job description
@@ -267,18 +360,30 @@ class KeywordOptimizer:
 
         max_target = min(min_target + 3, job_freq * 5)  # Cap at 5x or +3
 
-        # Analyze placement
-        summary_text = (resume.summary or '').lower() + (resume.headline or '').lower()
-        appears_in_summary = keyword.lower() in summary_text
+        # Analyze placement with word boundary matching
+        summary_text = (resume.summary or '').lower() + ' ' + (resume.headline or '').lower()
+        appears_in_summary = bool(re.search(keyword_pattern, summary_text))
 
+        # Check in experience bullets
         experience_text = ' '.join([
             ' '.join(exp.bullets or [])
             for exp in resume.experiences
         ]).lower()
-        appears_in_experience = keyword.lower() in experience_text
+        appears_in_experience = bool(re.search(keyword_pattern, experience_text))
 
+        # Check in skills section
         skills_text = ' '.join(resume.skills).lower()
-        appears_in_skills = keyword.lower() in skills_text
+        appears_in_skills = bool(re.search(keyword_pattern, skills_text))
+
+        # Also check for variations in each section
+        for var in variations_in_resume:
+            var_pattern = r'\b' + re.escape(var.lower()) + r'\b'
+            if not appears_in_summary and re.search(var_pattern, summary_text):
+                appears_in_summary = True
+            if not appears_in_experience and re.search(var_pattern, experience_text):
+                appears_in_experience = True
+            if not appears_in_skills and re.search(var_pattern, skills_text):
+                appears_in_skills = True
 
         return KeywordAnalysis(
             keyword=keyword,
