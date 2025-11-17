@@ -5,6 +5,123 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2025-01-17
+
+### Added
+
+#### Production-Grade LLM-Based Keyword Extraction System (CRITICAL)
+
+- **LLM-Based Keyword Extractor** (`modules/llm_keyword_extractor.py`)
+  - Intelligent keyword extraction using Claude AI
+  - Categorizes keywords into 5 types:
+    - Hard skills (technical abilities, domain expertise)
+    - Soft skills (leadership, communication, teamwork)
+    - Tools & Technologies (programming languages, frameworks, platforms)
+    - Certifications (professional certifications, licenses)
+    - Domain terms (industry-specific terminology)
+  - Weighted importance scoring (hard skills & tools: 3x, certs: 2x, soft skills & domain: 1x)
+  - Fallback to rule-based extraction when LLM unavailable
+  - Production-ready error handling and logging
+
+- **Comprehensive Stopword List** (957 words)
+  - Replaces inadequate 30-35 word stopword lists throughout codebase
+  - Industry-standard NLP stopword coverage
+  - Eliminates false keyword recommendations like "able", "access", "active", "adapt"
+  - Filters generic business terms and vague descriptors
+  - Shared across all keyword extraction modules
+
+- **Enhanced Semantic Variations** (60+ mappings)
+  - 3x expansion of semantic variation dictionary
+  - Covers all major technologies: Python, JavaScript, React, AWS, Kubernetes, etc.
+  - Framework variations: react → [reactjs, react.js, react native]
+  - Language variations: python → [python 3, pythonic, python development]
+  - Acronym handling: k8s ↔ kubernetes, AI ↔ artificial intelligence
+
+### Changed
+
+#### Keyword Optimizer (`modules/keyword_optimizer.py`)
+
+- **LLM Integration**
+  - Integrated LLM keyword extractor for job description parsing
+  - Extracts keywords from raw job text (not just structured skills)
+  - Uses weighted keywords from LLM categorization
+  - Improved fallback with comprehensive stopwords
+
+- **Word Boundary Matching**
+  - Prevents false positives (e.g., "react" no longer matches "create")
+  - Uses regex word boundaries: `\b keyword \b`
+  - Accurate keyword counting with proper escaping
+
+- **Semantic Variations**
+  - Expanded from 14 to 60+ predefined variations
+  - Covers programming languages, frameworks, databases, cloud, methodologies
+  - Includes soft skills variations (leadership, management, collaboration)
+
+#### Role Alignment Scorer (`modules/metrics/role_alignment.py`)
+
+- **Revised Scoring Formula**
+  - **Before:** 70% technical + 30% noisy "general keywords" → resulted in 0.18 (18%) scores
+  - **After:** 40% hard skills + 40% tools + 15% certs + 5% domain → realistic 60-80% scores
+  - Eliminates noisy general keywords entirely
+  - Focuses on what matters for ATS systems
+
+- **LLM-Based Extraction**
+  - Uses categorized keyword extraction for intelligent matching
+  - Technical-only fallback when LLM unavailable
+  - Detailed logging of extraction method used
+
+- **Lowered Threshold**
+  - Reduced from 0.85 to 0.70
+  - Realistic with proper keyword filtering
+  - Better reflects actual ATS matching behavior
+
+#### Resume Scorer (`modules/resume_scorer.py`)
+
+- **Word Boundary Matching**
+  - Accurate keyword detection using regex boundaries
+  - Prevents false matches in substring scenarios
+  - Example: "API" no longer matches in "rapid"
+
+#### ATS Scorer (`modules/metrics/ats.py`)
+
+- **Comprehensive Stopwords**
+  - Updated to use 957-word stopword list
+  - More accurate keyword density calculations
+  - Better ATS compatibility scoring
+
+#### ATS Simulation Agent (`agents/ats_simulation_agent.py`)
+
+- **Comprehensive Stopwords**
+  - Updated keyword extraction to use 957-word stopword list
+  - Improved keyword matching accuracy
+  - Better simulation of real ATS behavior
+
+### Fixed
+
+- **Keyword Recommendations**
+  - No longer recommends meaningless words like "able", "access", "active"
+  - Focuses on professionally relevant keywords only
+  - Filters out 400+ generic English words
+
+- **Match Rate Accuracy**
+  - Fixed artificially low match rates (0.18 → 0.60-0.80)
+  - Proper keyword extraction without noise
+  - Realistic scoring based on meaningful keywords
+
+- **False Positives**
+  - Word boundary matching eliminates substring false matches
+  - "react" doesn't match "create" or "creative"
+  - "API" doesn't match "rapid" or "capability"
+
+### Testing
+
+- **Comprehensive Test Suite** (`test_keyword_improvements.py`)
+  - Verifies 957 stopwords filter problematic words (PASS)
+  - Tests rule-based extraction removes noise (PASS)
+  - Validates word boundary matching prevents false positives (PASS)
+  - Confirms semantic variation detection works (PASS)
+  - 4/4 tests passing
+
 ## [2.5.0] - 2025-01-16
 
 ### Added

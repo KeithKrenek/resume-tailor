@@ -8,9 +8,21 @@ Resume Tailor is a production-grade Streamlit application that uses AI agents to
 [![Streamlit](https://img.shields.io/badge/streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![Anthropic](https://img.shields.io/badge/anthropic-claude-purple.svg)](https://www.anthropic.com/)
 
-## 🆕 Latest Enhancements (v2.5.0)
+## 🆕 Latest Enhancements (v2.6.0)
 
 ### What's New
+
+- 🔍 **Production-Grade LLM-Based Keyword Extraction** (CRITICAL) - Revolutionary keyword matching system
+  - Intelligent keyword extraction using Claude AI with 5-category classification
+  - 957 comprehensive stopwords (vs. previous 30) eliminate noise like "able", "access", "active"
+  - 60+ semantic variations (Python → python 3, pythonic, K8s → kubernetes)
+  - Fixed artificially low match rates (0.18 → 0.60-0.80)
+  - Word boundary matching prevents false positives
+  - Revised scoring formula: 40% hard skills + 40% tools + 15% certs + 5% domain
+  - **[📖 Read the Keyword Extraction Guide →](KEYWORD_EXTRACTION_GUIDE.md)**
+
+## Previous Enhancements (v2.5.0)
+
 - 🤖 **ATS Simulation & Testing** (HIGH) - Test how ATS systems will parse your resume
   - AI-powered parsing simulation with 6-category analysis
   - Overall score (0-100) and letter grade

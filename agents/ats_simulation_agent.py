@@ -1,10 +1,14 @@
-"""Agent for simulating ATS (Applicant Tracking System) parsing and analysis."""
+"""Agent for simulating ATS (Applicant Tracking System) parsing and analysis.
+
+IMPROVED VERSION: Uses comprehensive stopwords for accurate keyword extraction.
+"""
 
 import os
 import re
 from typing import Tuple, Optional, Dict, Any, List
 from anthropic import Anthropic
 from utils.logging_config import get_logger
+from modules.llm_keyword_extractor import COMPREHENSIVE_STOPWORDS
 
 logger = get_logger(__name__)
 
@@ -82,14 +86,17 @@ def simulate_ats_parsing(
 def build_ats_simulation_prompt(resume_text: str, job_description: Optional[str] = None) -> str:
     """Build prompt for ATS simulation."""
 
+    # Build job description section separately to avoid f-string backslash issues
+    job_section = ""
+    if job_description:
+        job_section = f"**Job Description:**\n{job_description[:1000]}...\n\n"
+
     prompt = f"""You are simulating an Applicant Tracking System (ATS) that parses and analyzes resumes.
 
 **Resume Text:**
 {resume_text}
 
-{"**Job Description:**\n" + job_description[:1000] + "..." if job_description else ""}
-
-**Your Task:**
+{job_section}**Your Task:**
 Analyze this resume as an ATS system would, and provide a comprehensive report in JSON format.
 
 **Analysis Areas:**
@@ -211,6 +218,9 @@ def extract_keywords(text: str) -> List[str]:
     """
     Extract important keywords from text.
 
+    IMPROVED: Now uses comprehensive stopword list (957 words)
+    instead of the inadequate 35-word list.
+
     Args:
         text: Text to extract keywords from
 
@@ -223,27 +233,17 @@ def extract_keywords(text: str) -> List[str]:
     # Remove special characters
     text = re.sub(r'[^a-z0-9\s\+\#\.]', ' ', text)
 
-    # Common stop words to ignore
-    stop_words = {
-        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-        'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'been',
-        'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
-        'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that',
-        'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
-        'my', 'your', 'his', 'her', 'its', 'our', 'their'
-    }
-
     # Split into words
     words = text.split()
 
-    # Filter and deduplicate
+    # Filter and deduplicate using comprehensive stopwords
     keywords = []
     seen = set()
 
     for word in words:
         word = word.strip()
         if (len(word) >= 3 and
-            word not in stop_words and
+            word not in COMPREHENSIVE_STOPWORDS and  # Use comprehensive stopwords
             word not in seen and
             not word.isdigit()):
             keywords.append(word)
@@ -253,6 +253,7 @@ def extract_keywords(text: str) -> List[str]:
     phrases = extract_phrases(text)
     keywords.extend(phrases)
 
+    logger.debug(f"Extracted {len(keywords)} keywords using comprehensive stopwords")
     return keywords
 
 
