@@ -1,50 +1,110 @@
 """
 Role Alignment Metric
 Measures how well the resume matches job requirements.
+
+IMPROVED VERSION: Uses LLM-based keyword extraction and comprehensive stopwords.
 """
 
 import re
-from typing import List, Set
+from typing import List, Set, Dict
 from .base import MetricCalculator, MetricScore
+from modules.llm_keyword_extractor import (
+    LLMKeywordExtractor,
+    COMPREHENSIVE_STOPWORDS
+)
+from utils.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class RoleAlignmentScorer(MetricCalculator):
-    """Calculates role alignment score based on keyword matching."""
+    """
+    Calculates role alignment score based on intelligent keyword matching.
 
-    def __init__(self, threshold: float = 0.85):
+    IMPROVED: Uses LLM-based extraction, comprehensive stopwords,
+    and focuses on technical skills rather than noisy general keywords.
+    """
+
+    def __init__(self, threshold: float = 0.70, api_key: str = None):
+        """
+        Initialize scorer.
+
+        Args:
+            threshold: Minimum score to pass (default: 0.70, lowered from 0.85
+                      because we now use proper filtering)
+            api_key: Anthropic API key for LLM extraction (optional)
+        """
         self.threshold = threshold
+        self.llm_extractor = LLMKeywordExtractor(api_key=api_key)
+        logger.info(f"RoleAlignmentScorer initialized (threshold={threshold})")
 
     def calculate(self, original_resume: str, optimized_resume: str, job_description: str) -> MetricScore:
-        """Calculate role alignment score."""
+        """
+        Calculate role alignment score using intelligent LLM-based extraction.
 
-        # Extract keywords from job description
-        jd_keywords = self._extract_keywords(job_description)
-        jd_technical = self._extract_technical_terms(job_description)
-        jd_all = jd_keywords.union(jd_technical)
+        IMPROVED: Focuses on meaningful keywords only, uses comprehensive stopwords,
+        and weights technical skills appropriately.
+        """
+        logger.info("Calculating role alignment score with LLM extraction")
 
-        # Extract keywords from optimized resume
-        resume_keywords = self._extract_keywords(optimized_resume)
-        resume_technical = self._extract_technical_terms(optimized_resume)
-        resume_all = resume_keywords.union(resume_technical)
+        # Extract keywords from job description using LLM
+        try:
+            jd_extraction = self.llm_extractor.extract_from_job_description(
+                job_text=job_description,
+                required_skills=[],
+                preferred_skills=[]
+            )
+            logger.info(f"Extracted {len(jd_extraction.all_keywords)} keywords from job description")
+        except Exception as e:
+            logger.error(f"LLM extraction failed for job description: {e}")
+            # Fallback to technical terms only
+            jd_technical = self._extract_technical_terms(job_description)
+            jd_extraction = None
 
-        # Calculate matches
-        matched = jd_all.intersection(resume_all)
-        missing = jd_all - resume_all
+        # Extract keywords from optimized resume using LLM
+        try:
+            resume_extraction = self.llm_extractor.extract_from_resume(
+                resume_text=optimized_resume,
+                structured_skills=[]
+            )
+            logger.info(f"Extracted {len(resume_extraction.all_keywords)} keywords from resume")
+        except Exception as e:
+            logger.error(f"LLM extraction failed for resume: {e}")
+            # Fallback to technical terms only
+            resume_technical = self._extract_technical_terms(optimized_resume)
+            resume_extraction = None
 
-        # Calculate score (weighted by importance)
-        technical_match_rate = len(jd_technical.intersection(resume_technical)) / len(jd_technical) if jd_technical else 1.0
-        keyword_match_rate = len(jd_keywords.intersection(resume_keywords)) / len(jd_keywords) if jd_keywords else 1.0
+        # If LLM extraction succeeded, use categorized keyword matching
+        if jd_extraction and resume_extraction:
+            matched, missing, overall_score = self._calculate_llm_based_score(
+                jd_extraction,
+                resume_extraction
+            )
+        else:
+            # Fallback to technical-only matching
+            logger.warning("Using fallback technical-only matching")
+            if not jd_extraction:
+                jd_technical = self._extract_technical_terms(job_description)
+            else:
+                jd_technical = set([k.lower() for k in jd_extraction.tools_technologies])
 
-        # Technical terms weighted higher (70% technical, 30% general keywords)
-        overall_score = (technical_match_rate * 0.7) + (keyword_match_rate * 0.3)
+            if not resume_extraction:
+                resume_technical = self._extract_technical_terms(optimized_resume)
+            else:
+                resume_technical = set([k.lower() for k in resume_extraction.tools_technologies])
+
+            matched = jd_technical.intersection(resume_technical)
+            missing = jd_technical - resume_technical
+            overall_score = len(matched) / len(jd_technical) if jd_technical else 1.0
 
         # Generate recommendations
         recommendations = []
         if overall_score < self.threshold:
             if missing:
+                # Show most important missing keywords (limit to 5)
                 top_missing = sorted(list(missing))[:5]
                 recommendations.append(f"Add these missing keywords: {', '.join(top_missing)}")
-            if technical_match_rate < 0.7:
+            if overall_score < 0.5:
                 recommendations.append("Focus on incorporating more technical terms from the job description")
 
         return MetricScore(
@@ -53,36 +113,81 @@ class RoleAlignmentScorer(MetricCalculator):
             passed=overall_score >= self.threshold,
             threshold=self.threshold,
             details={
-                "total_jd_keywords": len(jd_all),
+                "total_jd_keywords": len(jd_extraction.all_keywords) if jd_extraction else len(jd_technical) if 'jd_technical' in locals() else 0,
                 "matched_keywords": len(matched),
                 "missing_keywords": len(missing),
-                "technical_match_rate": technical_match_rate,
-                "keyword_match_rate": keyword_match_rate,
-                "matched_list": sorted(list(matched)),
-                "missing_list": sorted(list(missing))[:10]  # Top 10 missing
+                "matched_list": sorted(list(matched))[:20],  # Top 20 matched
+                "missing_list": sorted(list(missing))[:10],  # Top 10 missing
+                "extraction_method": "LLM" if (jd_extraction and resume_extraction) else "Technical-Only"
             },
             recommendations=recommendations
         )
+
+    def _calculate_llm_based_score(
+        self,
+        jd_extraction,
+        resume_extraction
+    ) -> tuple:
+        """
+        Calculate score using LLM-extracted categorized keywords.
+
+        Weights:
+        - Hard skills: 40%
+        - Tools/Technologies: 40%
+        - Certifications: 15%
+        - Domain terms: 5%
+        """
+        # Convert to sets for comparison (case-insensitive)
+        jd_hard = set([k.lower() for k in jd_extraction.hard_skills])
+        jd_tools = set([k.lower() for k in jd_extraction.tools_technologies])
+        jd_certs = set([k.lower() for k in jd_extraction.certifications])
+        jd_domain = set([k.lower() for k in jd_extraction.domain_terms])
+
+        resume_hard = set([k.lower() for k in resume_extraction.hard_skills])
+        resume_tools = set([k.lower() for k in resume_extraction.tools_technologies])
+        resume_certs = set([k.lower() for k in resume_extraction.certifications])
+        resume_domain = set([k.lower() for k in resume_extraction.domain_terms])
+
+        # Calculate match rates for each category
+        hard_match_rate = len(jd_hard & resume_hard) / len(jd_hard) if jd_hard else 1.0
+        tools_match_rate = len(jd_tools & resume_tools) / len(jd_tools) if jd_tools else 1.0
+        certs_match_rate = len(jd_certs & resume_certs) / len(jd_certs) if jd_certs else 1.0
+        domain_match_rate = len(jd_domain & resume_domain) / len(jd_domain) if jd_domain else 1.0
+
+        # Weighted overall score (focus on what matters for ATS)
+        overall_score = (
+            hard_match_rate * 0.40 +
+            tools_match_rate * 0.40 +
+            certs_match_rate * 0.15 +
+            domain_match_rate * 0.05
+        )
+
+        # Calculate overall matched and missing
+        jd_all = jd_hard | jd_tools | jd_certs | jd_domain
+        resume_all = resume_hard | resume_tools | resume_certs | resume_domain
+        matched = jd_all & resume_all
+        missing = jd_all - resume_all
+
+        logger.info(f"LLM-based score: {overall_score:.2f} (hard={hard_match_rate:.2f}, tools={tools_match_rate:.2f})")
+
+        return matched, missing, overall_score
 
     def get_threshold(self) -> float:
         return self.threshold
 
     def _extract_keywords(self, text: str) -> Set[str]:
-        """Extract general keywords (nouns, verbs, adjectives)."""
-        # Simple approach: extract words 4+ characters, lowercase, alphanumeric
+        """
+        Extract general keywords (DEPRECATED - use LLM extraction instead).
+
+        This fallback method now uses comprehensive stopwords.
+        """
+        # Extract words 4+ characters, lowercase, alphanumeric
         words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
 
-        # Filter out common stop words
-        stop_words = {
-            'about', 'after', 'before', 'during', 'from', 'into', 'through',
-            'that', 'this', 'these', 'those', 'with', 'will', 'would', 'should',
-            'could', 'have', 'been', 'being', 'their', 'there', 'where', 'when',
-            'what', 'which', 'while', 'work', 'working', 'experience', 'ability',
-            'apply', 'applicant', 'candidate', 'position', 'role', 'company',
-            'team', 'strong', 'good', 'great', 'excellent', 'required', 'preferred'
-        }
+        # Use comprehensive stopword list (400+ words)
+        keywords = {w for w in words if w not in COMPREHENSIVE_STOPWORDS}
 
-        keywords = {w for w in words if w not in stop_words}
+        logger.debug(f"Extracted {len(keywords)} keywords using fallback method")
         return keywords
 
     def _extract_technical_terms(self, text: str) -> Set[str]:

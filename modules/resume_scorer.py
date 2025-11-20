@@ -216,7 +216,11 @@ class ResumeScorer:
         )
 
     def _score_keyword_match(self, resume: ResumeModel, job: JobModel) -> ScoreComponent:
-        """Score keyword match with job description (0-100)."""
+        """
+        Score keyword match with job description (0-100).
+
+        IMPROVED: Uses word boundaries for accurate matching and semantic variations.
+        """
         if not job:
             return ScoreComponent(score=0, label="Keyword Match", details="No job provided")
 
@@ -235,9 +239,19 @@ class ResumeScorer:
         # Get all text from resume
         resume_text = self._get_resume_text(resume).lower()
 
-        # Count matches
-        required_matches = sum(1 for kw in required_keywords if kw in resume_text)
-        preferred_matches = sum(1 for kw in preferred_keywords if kw in resume_text)
+        # Count matches using word boundaries for accuracy
+        required_matches = 0
+        for kw in required_keywords:
+            # Use word boundaries to avoid false matches (e.g., "react" in "create")
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            if re.search(pattern, resume_text):
+                required_matches += 1
+
+        preferred_matches = 0
+        for kw in preferred_keywords:
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            if re.search(pattern, resume_text):
+                preferred_matches += 1
 
         # Calculate score (required skills worth more)
         required_score = (required_matches / len(required_keywords) * 70) if required_keywords else 0
@@ -247,9 +261,12 @@ class ResumeScorer:
 
         # Generate recommendations
         recommendations = []
-        missing_required = required_keywords - set(
-            kw for kw in required_keywords if kw in resume_text
-        )
+        missing_required = []
+        for kw in required_keywords:
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            if not re.search(pattern, resume_text):
+                missing_required.append(kw)
+
         if missing_required:
             recommendations.append(
                 f"Add missing required skills: {', '.join(list(missing_required)[:3])}"
